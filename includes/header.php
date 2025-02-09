@@ -151,22 +151,22 @@ include('includes/notification.php');
                                 <?php echo $Expenses; ?><span class="fa arrow"></span></a>
                         <li>
 
-                        <li>
+                            <!-- <li>
                             <a <?php ActiveClass("index.php?page=ManageAccount"); ?>
                                 href="index.php?page=ManageAccount">
                                 <i class="fa fa-tags"></i> <?php echo $Account; ?><span class="fa arrow"></a>
+                        </li> -->
+
+                            <!-- /.nav-second-level -->
+
+
+
                         </li>
-
-                        <!-- /.nav-second-level -->
-
-
-
                         </li>
-                        </li>
-                        <li><a <?php ActiveClass("index.php?page=ManageBudget"); ?>
+                        <!-- <li><a <?php ActiveClass("index.php?page=ManageBudget"); ?>
                                 href="index.php?page=ManageBudget"><i class="fa fa-archive"></i>
                                 <?php echo $BudgetsM; ?><span class="fa arrow"></a>
-                        </li>
+                        </li> -->
 
                         <li>
                             <a class="parent" href="javascript:void(0)"><i class="fa fa-gears"> </i>
@@ -175,18 +175,18 @@ include('includes/notification.php');
                                 <li>
                                     <a <?php ActiveClass("index.php?page=ManageExpenseCategory"); ?>
                                         href="index.php?page=ManageExpenseCategory"><i class="fa fa-caret-right"></i>
-                                        <?php echo $CategoryExpense; ?></a>
+                                        Add Expense Head</a>
                                 </li>
                                 <li>
                                     <a <?php ActiveClass("index.php?page=ManageIncomeCategory"); ?>
                                         href="index.php?page=ManageIncomeCategory"><i class="fa fa-caret-right"></i>
-                                        <?php echo $CategoryIncome; ?></a>
+                                        Add Income Head</a>
                                 </li>
 
                             </ul>
                         </li>
 
-                        <li>
+                        <!-- <li>
                             <a class="parent" href="javascript:void(0)"><i class="fa fa-print"> </i>
                                 <?php echo $ReportsGraphs; ?><span class="fa arrow"></a>
                             <ul class="nav nav-second-level">
@@ -221,7 +221,7 @@ include('includes/notification.php');
                         <li>
                             <a <?php ActiveClass("index.php?page=Settings"); ?> href="index.php?page=Settings"><i
                                     class="fa fa-user"> </i> <?php echo $ProfileSettings; ?><span class="fa arrow"></a>
-                        </li>
+                        </li> -->
 
                         <li>
                             <a href="index.php?action=logout"><i class="glyphicon glyphicon-log-out"></i>

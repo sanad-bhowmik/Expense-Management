@@ -72,10 +72,11 @@ if (isset($_POST['submit'])) {
     // Sanitize and get form data
     $user_id = (int) $_POST["user_id"];
     $balance = $mysqli->real_escape_string($_POST["balance"]);
+    $date = $mysqli->real_escape_string($_POST["date"]);
     $status = 1;
 
     // Debugging: Output the values
-    var_dump($user_id, $balance, $status);
+    // var_dump($user_id, $balance, $date, $status);
 
     // Check if the user already has an existing balance record
     $checkBalanceQuery = "SELECT balance FROM user_balance WHERE user_id = ? ORDER BY created_at DESC LIMIT 1";
@@ -91,9 +92,9 @@ if (isset($_POST['submit'])) {
             $new_balance = $existing_balance + $balance;
 
             // Update the balance
-            $updateQuery = "UPDATE user_balance SET balance = ?, updated_at = NOW() WHERE user_id = ?";
+            $updateQuery = "UPDATE user_balance SET balance = ?, date = ?, updated_at = NOW() WHERE user_id = ?";
             if ($stmt = $mysqli->prepare($updateQuery)) {
-                $stmt->bind_param('di', $new_balance, $user_id);
+                $stmt->bind_param('dsi', $new_balance, $date, $user_id);
 
                 if ($stmt->execute()) {
                     $msgBox = alertBox("Balance has been updated successfully!");
@@ -108,10 +109,10 @@ if (isset($_POST['submit'])) {
             }
         } else {
             // If no existing balance, insert a new record
-            $insertQuery = "INSERT INTO user_balance (balance, user_id, status, created_at, updated_at)
-                            VALUES (?, ?, ?, NOW(), NOW())";
+            $insertQuery = "INSERT INTO user_balance (balance, user_id, date, status, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, NOW(), NOW())";
             if ($stmt = $mysqli->prepare($insertQuery)) {
-                $stmt->bind_param('dii', $balance, $user_id, $status);
+                $stmt->bind_param('diss', $balance, $user_id, $date, $status);
 
                 if ($stmt->execute()) {
                     $msgBox = alertBox("Balance has been added successfully!");
@@ -130,12 +131,14 @@ if (isset($_POST['submit'])) {
         $msgBox = alertBox("Error: Unable to check existing balance. " . $mysqli->error, "error");
     }
 }
+
 //Get list category
-$GetUserList = "SELECT ub.id, ub.balance, du.FirstName, du.LastName, du.Email 
+$GetUserList = "SELECT ub.id, ub.balance, ub.date, du.FirstName, du.LastName, du.Email 
                 FROM user_balance ub
                 JOIN department_user du ON ub.user_id = du.UserId
                 ORDER BY du.FirstName ASC";
 $GetUsers = mysqli_query($mysqli, $GetUserList);
+
 // Search
 
 // Search
@@ -175,41 +178,122 @@ include('includes/global.php');
                     <i class="fa fa-bar-chart-o fa-fw"></i> List of balance
                 </div>
                 <div class="panel-body">
-                    <div class="">
-                        <table class="table table-striped table-bordered table-hover" id="assetsdata">
-                            <thead>
-                                <tr>
-                                    <th class="text-left">User Name</th>
-                                    <th class="text-left">Email</th>
-                                    <th class="text-left">Balance</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                <?php while ($col = mysqli_fetch_assoc($GetUsers)) { ?>
-                                    <tr>
-                                        <!-- Display the full name from FirstName and LastName -->
-                                        <td><?php echo $col['FirstName'] . ' ' . $col['LastName']; ?></td>
-                                        <td><?php echo $col['Email']; ?></td>
-                                        <td><?php echo number_format($col['balance'], 2); ?></td>
-                                    </tr>
-                                </tbody>
-
+                    <!-- Flex container for the date filter and buttons, aligned to the right -->
+                    <div class="d-flex justify-content-end mb-3" style="margin-bottom: 5vh;">
+                        <div class="mr-2">
+                            <!-- Date filter input -->
+                            <input type="date" id="filterDate" class="form-control" />
+                        </div>
+                        <div>
+                            <!-- Filter button -->
+                            <button id="filterBtn" class="btn"
+                                style="padding: 7px; background-color: transparent;">
+                                <svg fill="#000" height="20px" width="20px" version="1.1" id="Capa_1"
+                                    xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                                    viewBox="0 0 488.4 488.4" xml:space="preserve" stroke="#000">
+                                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                    <g id="SVGRepo_iconCarrier">
+                                        <g>
+                                            <g>
+                                                <path
+                                                    d="M0,203.25c0,112.1,91.2,203.2,203.2,203.2c51.6,0,98.8-19.4,134.7-51.2l129.5,129.5c2.4,2.4,5.5,3.6,8.7,3.6 s6.3-1.2,8.7-3.6c4.8-4.8,4.8-12.5,0-17.3l-129.6-129.5c31.8-35.9,51.2-83,51.2-134.7c0-112.1-91.2-203.2-203.2-203.2 S0,91.15,0,203.25z M381.9,203.25c0,98.5-80.2,178.7-178.7,178.7s-178.7-80.2-178.7-178.7s80.2-178.7,178.7-178.7 S381.9,104.65,381.9,203.25z">
+                                                </path>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                            </button>
+                            <!-- Clear button -->
+                            <button id="clearBtn" class="btn btn-secondary ml-2"
+                                style="">Clear</button>
                         </div>
                     </div>
-                    <!-- /.modal -->
-                <?php } ?>
 
-                </table>
+                    <table class="table table-striped table-bordered table-hover" id="assetsdata">
+                        <thead>
+                            <tr>
+                                <th class="text-left">User Name</th>
+                                <th class="text-left">Date</th>
+                                <th class="text-left">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($col = mysqli_fetch_assoc($GetUsers)) { ?>
+                                <tr data-date="<?php echo $col['date']; ?>">
+                                    <!-- Display the full name from FirstName and LastName -->
+                                    <td><?php echo $col['FirstName'] . ' ' . $col['LastName']; ?></td>
+                                    <!-- Display the date -->
+                                    <td><?php echo $col['date']; ?></td>
+                                    <td><?php echo number_format($col['balance'], 2); ?></td>
+                                </tr>
+                            <?php } ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <script>
+                    // JavaScript for date filter
+                    document.getElementById("filterBtn").addEventListener("click", function () {
+                        const filterDate = document.getElementById("filterDate").value;
+
+                        const rows = document.querySelectorAll("#assetsdata tbody tr");
+
+                        rows.forEach(row => {
+                            const rowDate = row.getAttribute("data-date");
+
+                            // If the filter date is selected, compare with the row date
+                            if (filterDate) {
+                                if (rowDate === filterDate) {
+                                    row.style.display = "";
+                                } else {
+                                    row.style.display = "none";
+                                }
+                            } else {
+                                // If no filter is selected, show all rows
+                                row.style.display = "";
+                            }
+                        });
+                    });
+
+                    document.getElementById("clearBtn").addEventListener("click", function () {
+                        document.getElementById("filterDate").value = "";
+
+                        // Show all rows
+                        const rows = document.querySelectorAll("#assetsdata tbody tr");
+                        rows.forEach(row => {
+                            row.style.display = "";
+                        });
+                    });
+                </script>
+
+                <style>
+                    .d-flex {
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-end;
+                    }
+
+                    .d-flex>div {
+                        margin-left: 10px;
+                    }
+
+                    input[type="date"] {
+                        max-width: 200px;
+                    }
+
+                    .ml-2 {
+                        margin-left: 10px;
+                    }
+                </style>
+
+
             </div>
+
         </div>
-
+        <!-- /.col-lg-4 -->
     </div>
-
-</div>
-<!-- /.col-lg-4 -->
-</div>
-<!-- /.row -->
+    <!-- /.row -->
 
 </div>
 <!-- /#page-wrapper -->
@@ -244,6 +328,18 @@ include('includes/global.php');
                         <input class="form-control" required placeholder="Enter Balance" name="balance" type="number"
                             step="0.01">
                     </div>
+
+                    <!-- Date Picker with Clickable Calendar Icon -->
+                    <div class="form-group">
+                        <label for="date">Date</label>
+                        <div class="input-group">
+                            <input type="text" name="date" id="datepicker" class="form-control"
+                                placeholder="Select Date" required>
+                            <span class="input-group-addon" style="cursor: pointer;">
+                                <i class="glyphicon glyphicon-calendar"></i>
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" name="submit" class="btn btn-success">
@@ -255,10 +351,25 @@ include('includes/global.php');
         </div>
     </div>
 </div>
+<link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
 
 
 <script>
+    $(document).ready(function () {
+        // Initialize the date picker
+        $('#datepicker').datepicker({
+            format: 'yyyy-mm-dd', // Set date format
+            autoclose: true,     // Close the picker automatically
+            todayHighlight: true // Highlight today's date
+        });
 
+        // Trigger the date picker when the calendar icon is clicked
+        $('.input-group-addon').on('click', function () {
+            $('#datepicker').datepicker('show');
+        });
+    });
 
     $(function () {
 

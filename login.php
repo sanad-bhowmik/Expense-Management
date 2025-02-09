@@ -112,16 +112,61 @@ if (isset($_POST['login'])) {
     <!-- Custom Fonts -->
     <link href="font-awesome-4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
 
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-    <![endif]-->
+    <style>
+        /* Body Background Image with Opacity */
+        body {
+            background-image: url('https://media.istockphoto.com/id/1462932996/photo/cost-and-quality-control-business-strategy-and-project-management-concept-businessman-working.jpg?s=612x612&w=0&k=20&c=TUVDo4Q6uUpsJCssPxQ05egXtfFoHT0AEd78yMWTW80=');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgb(0 0 0 / 71%); 
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-panel {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-heading {
+            background-color: #2d3e50;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #5cb85c;
+            border-color: #4cae4c;
+        }
+
+        /* Footer Text */
+        .footer-text {
+            color: white;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+    </style>
 
 </head>
 
 <body>
+
+    <!-- Overlay for background opacity -->
+    <div class="overlay"></div>
 
     <div class="container">
         <div class="row">
@@ -153,16 +198,13 @@ if (isset($_POST['login'])) {
                                         class="glyphicon glyphicon-log-in"></span> <?php echo
                                             $SignIn; ?></button>
                                 <hr>
-                                <a href="signUp.php" class="btn btn-info btn-block"> <span
-                                        class="glyphicon glyphicon-pencil"></span> <?php echo
-                                            $RegisterAnAccount; ?></a>
                             </fieldset>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="row text-center">
+        <div class="row text-center footer-text">
             <small>copyright © <?php echo Date('Y'); ?> Money Manager | All right Reserved</small><br>
             <small>Develop By PlayOn24</small>
         </div>

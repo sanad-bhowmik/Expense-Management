@@ -5,10 +5,10 @@ ini_set('display_errors', '0');
 
 // Connection Database
 
-$dbuser = "root";		 		//user to access your database
-$dbpassword = ""; 			//password to access your database
-$dbname = "money"; 	//name of database
-$dbhost = "localhost";		//your database server
+$dbuser = "root";	
+$dbpassword = ""; 	
+$dbname = "money"; 	
+$dbhost = "localhost";	
 
 //Connect
 $mysqli = new mysqli($dbhost, $dbuser, $dbpassword, $dbname);
