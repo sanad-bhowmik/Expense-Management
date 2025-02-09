@@ -7,115 +7,110 @@ include('includes/Functions.php');
 include('includes/notification.php');
 
 //delete category
-
 if (isset($_POST['delete_user'])) {
-    // Sanitize and retrieve the user id
+    // Sanitize and retrieve the user ID
     $UserId = (int) $_POST['userid'];
 
-    // Debugging: Check the received user id
-    var_dump($UserId);
+    // Debugging: Check the received user ID
+    if ($UserId > 0) {
+        // Prepare the SQL query to delete the user from admin_hr table
+        $DeleteUser = "DELETE FROM admin_hr WHERE id = ?";
 
-    // Prepare the SQL query to delete the user from department_wise_users table
-    $DeleteUser = "DELETE FROM department_wise_users WHERE id = ?";
+        if ($stmt = $mysqli->prepare($DeleteUser)) {
+            // Bind the user ID to the query
+            $stmt->bind_param('i', $UserId);
 
-    if ($stmt = $mysqli->prepare($DeleteUser)) {
-        // Bind the user id to the query
-        $stmt->bind_param('i', $UserId);
+            // Execute the delete query
+            if ($stmt->execute()) {
+                $msgBox = alertBox("User deleted successfully!");
+            } else {
+                // Get error details
+                $msgBox = alertBox("Error: Unable to delete user. SQL Error: " . $stmt->error, "error");
+            }
 
-        // Execute the delete query
-        if ($stmt->execute()) {
-            $msgBox = alertBox("User deleted successfully!");
+            // Close the statement
+            $stmt->close();
         } else {
-            // Get error details
-            $error = $stmt->error;
-            $msgBox = alertBox("Error: Unable to delete user. SQL Error: " . $error, "error");
+            $msgBox = alertBox("Error: Unable to prepare SQL query for deletion.", "error");
+        }
+    } else {
+        $msgBox = alertBox("Error: Invalid User ID.", "error");
+    }
+}
+
+
+// Edit
+if (isset($_POST['edit'])) {
+    // Sanitize input
+    $UserId = (int) $_POST['user_id'];
+    $UserName = $mysqli->real_escape_string($_POST['user_name']);
+    $UserEmail = $mysqli->real_escape_string($_POST['user_email']);
+
+    // Update name and email in the admin_hr table
+    $sql = "UPDATE admin_hr SET name = ?, email = ? WHERE id = ?";
+    if ($stmt = $mysqli->prepare($sql)) {
+        // Bind parameters (s = string, i = integer)
+        $stmt->bind_param('ssi', $UserName, $UserEmail, $UserId);
+
+        // Execute the query
+        if ($stmt->execute()) {
+            $msgBox = alertBox("User details updated successfully!");
+        } else {
+            $msgBox = alertBox("Error: Unable to update user details.", "error");
         }
 
         // Close the statement
         $stmt->close();
     } else {
-        $msgBox = alertBox("Error: Unable to prepare SQL query for deletion.", "error");
+        $msgBox = alertBox("Error: Unable to prepare SQL query.", "error");
     }
 }
-
-
-//Edit Category
-if (isset($_POST['edit'])) {
-    $UserId = $_POST['user_id'];
-    $UserName = $_POST['user_name'];
-
-    // Update user name in department_wise_users table
-    $sql = "UPDATE department_wise_users SET user_name = ? WHERE id = ?";
-    if ($stmt = $mysqli->prepare($sql)) {
-        // Bind parameters (s = string, i = integer)
-        $stmt->bind_param('si', $UserName, $UserId);
-
-        // Execute the query
-        if ($stmt->execute()) {
-            $msgBox = alertBox("User name updated successfully!");
-        } else {
-            $msgBox = alertBox("Error: Unable to update user name.", "error");
-        }
-    }
-
-    // Close the statement
-    $stmt->close();
-}
-
 
 
 // Add new user
 if (isset($_POST['submit'])) {
     // Sanitize and get form data
-    $user_name = $mysqli->real_escape_string($_POST["user_name"]);
-    $department_id = (int) $_POST["department"];
-    $balance = (float) $_POST["balance"];
+    $first_name = $mysqli->real_escape_string($_POST["first_name"]);
+    $last_name = $mysqli->real_escape_string($_POST["last_name"]);
+    $email = $mysqli->real_escape_string($_POST["email"]);
+    $password = $_POST["password"];  // Store password as VARCHAR, no need for encryption here
+    $status = 1;
+    $added_by = $_SESSION['UserId']; // Assuming the logged-in user’s ID is stored in the session
 
-    if (empty($department_id)) {
-        $msgBox = alertBox("Please select a department.", "error");
-    } else {
-        $status = 1;
-        $added_by = $_SESSION['auth_name'];
-        $sql = "INSERT INTO department_wise_users (user_name, department_id, balance, status, added_by, created_at, updated_at) 
-                VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
+    // SQL Query
+    $sql = "INSERT INTO department_user (FirstName, LastName, Email, Password, status, created_at, updated_at, added_by)
+            VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?)";
 
-        // var_dump($sql);
+    if ($stmt = $mysqli->prepare($sql)) {
+        $stmt->bind_param('ssssii', $first_name, $last_name, $email, $password, $status, $added_by);
 
-        if ($stmt = $mysqli->prepare($sql)) {
-            $stmt->bind_param('siiss', $user_name, $department_id, $balance, $status, $added_by);
-
-            if ($stmt->execute()) {
-                $msgBox = alertBox("User has been created successfully!");
-            } else {
-                // var_dump($stmt->error);
-                $msgBox = alertBox("Error: Unable to create user.", "error");
-            }
-            $stmt->close();
+        if ($stmt->execute()) {
+            $msgBox = alertBox("User has been created successfully!");
         } else {
-            // var_dump($mysqli->error); // Display SQL preparation error
-            $msgBox = alertBox("Error: Unable to prepare SQL query.", "error");
+            // Debugging: show error message
+            $msgBox = alertBox("Error: Unable to create user. " . $stmt->error, "error");
         }
+        $stmt->close();
+    } else {
+        // Debugging: show error message if SQL query preparation fails
+        $msgBox = alertBox("Error: Unable to prepare SQL query. " . $mysqli->error, "error");
     }
 }
 
 
+
 //Get list category
+$GetUserList = "SELECT UserId, FirstName, LastName, Email FROM department_user ORDER BY FirstName ASC";
+$GetUsers = mysqli_query($mysqli, $GetUserList);
+// Search
 
-$GetDepartmentList = "SELECT du.*, d.name AS department_name 
-                      FROM department_wise_users du
-                      INNER JOIN department d ON du.department_id = d.id
-                      WHERE d.status = 1
-                      ORDER BY d.name ASC";
-$GetDepartments = mysqli_query($mysqli, $GetDepartmentList);
+// Search
+$searchQuery = ""; // Default query condition
 
-// Search category
 if (isset($_POST['searchbtn'])) {
     $SearchTerm = $mysqli->real_escape_string($_POST['search']); // Prevent SQL injection
-    $GetList = "SELECT id, name FROM department WHERE status = 1 AND name LIKE '%$SearchTerm%' ORDER BY name ASC";
-    $GetListDepartment = mysqli_query($mysqli, $GetList);
+    $searchQuery = " WHERE name LIKE '%$SearchTerm%' ";
 }
-
-
 
 //Include Global page
 include('includes/global.php');
@@ -148,16 +143,16 @@ include('includes/global.php');
                 <div class="panel-body">
                     <div class="pull-right">
                         <form action="" method="post">
-                            <div class="form-group input-group col-lg-5	pull-right">
-                                <input type="text" name="search" placeholder="<?php echo $Search; ?>"
-                                    class="form-control">
+                            <div class="form-group input-group col-lg-5 pull-right">
+                                <input type="text" name="search" placeholder="Search by Name" class="form-control">
                                 <span class="input-group-btn">
-                                    <button class="btn btn-primary" name="searchbtn" type="input"><i
-                                            class="fa fa-search"></i>
+                                    <button class="btn btn-primary" name="searchbtn" type="submit">
+                                        <i class="fa fa-search"></i>
                                     </button>
                                 </span>
                             </div>
                         </form>
+
 
                     </div>
                     <div class="">
@@ -165,22 +160,20 @@ include('includes/global.php');
                             <thead>
                                 <tr>
                                     <th class="text-left">User Name</th>
-                                    <th class="text-left">Department</th>
-                                    <th class="text-left">Balance</th>
-                                    <th class="text-left"><?php echo $Action; ?></th>
-
+                                    <th class="text-left">Email</th>
+                                    <!-- <th class="text-left"><?php echo $Action; ?></th> -->
                                 </tr>
                             </thead>
 
                             <tbody>
-                                <?php while ($col = mysqli_fetch_assoc($GetDepartments)) { ?>
+                                <?php while ($col = mysqli_fetch_assoc($GetUsers)) { ?>
                                     <tr>
-                                        <td><?php echo $col['user_name']; ?></td>
-                                        <td><?php echo $col['department_name']; ?></td>
-                                        <td><?php echo $col['balance']; ?></td>
+                                        <!-- Display the full name from FirstName and LastName -->
+                                        <td><?php echo $col['FirstName'] . ' ' . $col['LastName']; ?></td>
+                                        <td><?php echo $col['Email']; ?></td>
 
-                                        <td colspan="2" class="notification">
-                                            <a href="#EditDept<?php echo $col['id']; ?>" data-toggle="modal">
+                                        <!-- <td colspan="2" class="notification">
+                                            <a href="#EditUser<?php echo $col['id']; ?>" data-toggle="modal">
                                                 <span class="btn btn-primary btn-xs glyphicon glyphicon-edit"
                                                     data-toggle="tooltip" data-placement="left" title="Edit User"></span>
                                             </a>
@@ -188,9 +181,8 @@ include('includes/global.php');
                                                 <span class="glyphicon glyphicon-trash btn btn-primary btn-xs"
                                                     data-toggle="tooltip" data-placement="right" title="Delete User"></span>
                                             </a>
-                                        </td>
+                                        </td> -->
                                     </tr>
-
                                 </tbody>
                                 <div class="modal fade" id="DeleteUser<?php echo $col['id']; ?>" tabindex="-1" role="dialog"
                                     aria-labelledby="myModalLabel" aria-hidden="true">
@@ -204,14 +196,16 @@ include('includes/global.php');
                                                     </h4>
                                                 </div>
                                                 <div class="modal-body">
-                                                    <?php echo $ThisItem; ?>
+                                                    Sure About this?
                                                 </div>
                                                 <div class="modal-footer">
                                                     <input type="hidden" name="userid" value="<?php echo $col['id']; ?>" />
-                                                    <button type="submit" name="delete_user"
-                                                        class="btn btn-danger"><?php echo $Yes; ?></button>
-                                                    <button type="button" class="btn btn-default"
-                                                        data-dismiss="modal"><?php echo $Cancel; ?></button>
+                                                    <button type="submit" name="delete_user" class="btn btn-danger">
+                                                        <?php echo $Yes; ?>
+                                                    </button>
+                                                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                                                        <?php echo $Cancel; ?>
+                                                    </button>
                                                 </div>
                                             </form>
                                         </div>
@@ -219,11 +213,12 @@ include('includes/global.php');
                                 </div>
 
 
+
                                 <!-- /.modal-dialog -->
                         </div>
                         <!-- /.modal -->
                         <!-- /.edit category -->
-                        <div class="modal fade" id="EditDept<?php echo $col['id']; ?>" tabindex="-1" role="dialog"
+                        <div class="modal fade" id="EditUser<?php echo $col['id']; ?>" tabindex="-1" role="dialog"
                             aria-labelledby="myModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
@@ -231,13 +226,21 @@ include('includes/global.php');
                                         <div class="modal-header">
                                             <button type="button" class="close" data-dismiss="modal"
                                                 aria-hidden="true">&times;</button>
-                                            <h4 class="modal-title" id="myModalLabel">Edit User Name</h4>
+                                            <h4 class="modal-title" id="myModalLabel">Edit User</h4>
                                         </div>
                                         <div class="modal-body">
+                                            <!-- Name Field -->
                                             <div class="form-group">
                                                 <label for="user_name">User Name</label>
                                                 <input class="form-control" required name="user_name"
-                                                    value="<?php echo $col['user_name']; ?>" type="text" autofocus>
+                                                    value="<?php echo $col['name']; ?>" type="text" autofocus>
+                                            </div>
+
+                                            <!-- Email Field -->
+                                            <div class="form-group">
+                                                <label for="user_email">Email</label>
+                                                <input class="form-control" required name="user_email"
+                                                    value="<?php echo $col['email']; ?>" type="email">
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -285,34 +288,30 @@ include('includes/global.php');
                     <h4 class="modal-title" id="myModalLabel">Add New User</h4>
                 </div>
                 <div class="modal-body">
-                    <!-- Name Field -->
+                    <!-- First Name Field -->
                     <div class="form-group">
-                        <label for="name">Name</label>
-                        <input class="form-control" required placeholder="Enter Name" name="user_name" type="text"
-                            autofocus>
+                        <label for="first_name">First Name</label>
+                        <input class="form-control" required placeholder="Enter First Name" name="first_name"
+                            type="text" autofocus>
                     </div>
 
-                    <!-- Department Dropdown -->
+                    <!-- Last Name Field -->
                     <div class="form-group">
-                        <label for="department">Department</label>
-                        <select class="form-control" required name="department">
-                            <option value="">Select Department</option>
-                            <?php
-                            // Fetch departments from the department table
-                            $GetDepartments = "SELECT id, name FROM department ORDER BY name ASC";
-                            $GetDepartmentsResult = mysqli_query($mysqli, $GetDepartments);
-                            while ($department = mysqli_fetch_assoc($GetDepartmentsResult)) {
-                                echo "<option value='" . $department['id'] . "'>" . $department['name'] . "</option>";
-                            }
-                            ?>
-                        </select>
+                        <label for="last_name">Last Name</label>
+                        <input class="form-control" required placeholder="Enter Last Name" name="last_name" type="text">
                     </div>
 
-                    <!-- Balance Field -->
+                    <!-- Email Field -->
                     <div class="form-group">
-                        <label for="balance">Balance</label>
-                        <input class="form-control" required placeholder="Enter Balance" name="balance" type="number"
-                            min="0" step="any">
+                        <label for="email">Email</label>
+                        <input class="form-control" required placeholder="Enter Email" name="email" type="email">
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input class="form-control" required placeholder="Enter Password" name="password"
+                            type="password">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -322,11 +321,9 @@ include('includes/global.php');
                     <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $Cancel; ?></button>
                 </div>
             </form>
-
         </div>
     </div>
 </div>
-
 
 
 <script>

@@ -1,72 +1,91 @@
 <?php
 session_start();
 
-
 $msgBox = '';
 
+// Include required files
+include('includes/notification.php');
+include('includes/db.php');
+include('includes/Functions.php');
 
-//include notification page
-include ('includes/notification.php');
-
-//Include db Page
-include ('includes/db.php');
-
-//Include Function page
-include ('includes/Functions.php');
-
-//User Login
-
+// User Login
 if (isset($_POST['login'])) {
-    if ($_POST['email'] == '') {
+    if (empty($_POST['email'])) {
         $msgBox = alertBox($EmailEmpty);
-    } else
-        if ($_POST['password'] == '') {
-            $msgBox = alertBox($PasswordEmpty);
+    } elseif (empty($_POST['password'])) {
+        $msgBox = alertBox($PasswordEmpty);
+    } else {
+        // Get User Info
+        $Email = $mysqli->real_escape_string($_POST['email']);
+        $Password = $mysqli->real_escape_string($_POST['password']);
 
-        } else {
-            // Get User Info
-            $Email = $mysqli->real_escape_string($_POST['email']);
-            $Password = "admin";
+        // Query to check both tables
+        $query = "
+            SELECT UserId, FirstName, LastName, Email, Password, Currency, 'user' AS user_type
+            FROM user
+            WHERE Email = ? AND Password = ?
+            UNION
+            SELECT UserId, FirstName, LastName, Email, Password, NULL AS Currency, 'department_user' AS user_type
+            FROM department_user
+            WHERE Email = ? AND Password = ?";
 
-            if ($stmt = $mysqli->prepare("SELECT UserId, FirstName, LastName, Email, Password, Currency from user WHERE Email = ? AND Password = ? ")) {
-                $stmt->bind_param("ss", $Email, $Password);
-                $stmt->execute();
-                $stmt->bind_result($UserId_, $FirstName_, $LastName_, $Email_, $Password_, $Currency_);
-                $stmt->store_result();
+        if ($stmt = $mysqli->prepare($query)) {
+            $stmt->bind_param("ssss", $Email, $Password, $Email, $Password);
+            $stmt->execute();
+            $stmt->bind_result($UserId_, $FirstName_, $LastName_, $Email_, $Password_, $Currency_, $UserType_);
+            $stmt->store_result();
+
+            if ($stmt->num_rows > 0) {
                 $stmt->fetch();
-                if ($num_of_rows = $stmt->num_rows >= 1) {
-                    session_start();
-                    $_SESSION['UserId'] = $UserId_;
-                    $_SESSION['FirstName'] = $FirstName_;
-                    $_SESSION['LastName'] = $LastName_;
+
+                // Set session variables
+                $_SESSION['UserId'] = $UserId_;
+                $_SESSION['FirstName'] = $FirstName_;
+                $_SESSION['LastName'] = $LastName_;
+                $_SESSION['Email'] = $Email_;
+                $_SESSION['UserType'] = $UserType_; // Indicates the source table (user or department_user)
+                if ($Currency_) {
                     $_SESSION['Currency'] = $Currency_;
-                    $UserIds = $_SESSION['UserId'];
+                }
 
+                $UserIds = $_SESSION['UserId'];
 
-                    // Generate default Category for New User
+                // Generate default Category for New User (if `user` table)
+                if ($UserType_ === 'user') {
                     $a = "SELECT CategoryName FROM category WHERE UserId = $UserIds";
                     $b = mysqli_query($mysqli, $a);
 
-                    if (mysqli_num_rows($b) >= 1) {
-                      echo '<META HTTP-EQUIV="Refresh" Content="0; URL=index.php">';
-                    } else {
-                        $c = "INSERT INTO category(UserId, CategoryName, Level) VALUES ($UserIds, 'Salary', 1), ($UserIds, 'Alowance', 1), ($UserIds, 'Petty Cash', 1), ($UserIds, 'Bonus', 1), ($UserIds, 'Food', 2),
-												 ($UserIds, 'Social Life', 2), ($UserIds, 'Self-Development', 2), ($UserIds, 'Transportation', 2), ($UserIds, 'Culture', 2), ($UserIds, 'Household', 2), ($UserIds, 'Apparel', 2), 
-												 ($UserIds, 'Beauty', 2), ($UserIds, 'Health', 2), ($UserIds, 'Gift', 2)";
-                        $d = mysqli_query($mysqli, $c);
+                    if (mysqli_num_rows($b) < 1) {
+                        $c = "INSERT INTO category(UserId, CategoryName, Level) VALUES 
+                            ($UserIds, 'Salary', 1), 
+                            ($UserIds, 'Allowance', 1), 
+                            ($UserIds, 'Petty Cash', 1), 
+                            ($UserIds, 'Bonus', 1), 
+                            ($UserIds, 'Food', 2),
+                            ($UserIds, 'Social Life', 2), 
+                            ($UserIds, 'Self-Development', 2), 
+                            ($UserIds, 'Transportation', 2), 
+                            ($UserIds, 'Culture', 2), 
+                            ($UserIds, 'Household', 2), 
+                            ($UserIds, 'Apparel', 2), 
+                            ($UserIds, 'Beauty', 2), 
+                            ($UserIds, 'Health', 2), 
+                            ($UserIds, 'Gift', 2)";
+                        mysqli_query($mysqli, $c);
                     }
-                    echo '<META HTTP-EQUIV="Refresh" Content="0; URL=index.php">';
-                } else {
-                    $msgBox = alertBox($LoginError);
                 }
-            }
-        }
 
+                // Redirect to index.php
+                echo '<META HTTP-EQUIV="Refresh" Content="0; URL=index.php">';
+            } else {
+                $msgBox = alertBox($LoginError); // Invalid email or password
+            }
+
+            $stmt->close();
+        }
+    }
 }
 ?>
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -109,31 +128,34 @@ if (isset($_POST['login'])) {
             <div class="col-md-4 col-md-offset-4">
                 <div class="login-panel panel panel-primary">
                     <div class="panel-heading">
-                        <h3 class="panel-title text-center"><span class="glyphicon glyphicon-lock"></span>  <?php echo
-$UserSign; ?></h3>
+                        <h3 class="panel-title text-center"><span class="glyphicon glyphicon-lock"></span> <?php echo
+                            $UserSign; ?></h3>
                     </div>
                     <div class="panel-body">
-						<?php if ($msgBox) {
-    echo $msgBox;
-} ?>
+                        <?php if ($msgBox) {
+                            echo $msgBox;
+                        } ?>
                         <form method="post" action="" role="form">
                             <fieldset>
                                 <div class="form-group">
                                     <label for="email"><?php echo $Emails; ?></label>
-                                    <input class="form-control"  placeholder="<?php echo
-$Emails; ?>" name="email" type="email" autofocus>
+                                    <input class="form-control" placeholder="<?php echo
+                                        $Emails; ?>" name="email" type="email" autofocus>
                                 </div>
                                 <div class="form-group">
-                                     <label for="password"><?php echo $Passwords; ?></label>
-                                    <input class="form-control"  placeholder="<?php echo
-$Passwords; ?>" name="password" type="password" value="">
-                               </div>
-                               
-                               <hr>
-                                <button type="submit" name="login" class="btn btn-success btn-block"><span class="glyphicon glyphicon-log-in"></span>  <?php echo
-$SignIn; ?></button>                                 <hr>
-                               <a href="signUp.php" class="btn btn-info btn-block"> <span class="glyphicon glyphicon-pencil"></span> <?php echo
-$RegisterAnAccount; ?></a>
+                                    <label for="password"><?php echo $Passwords; ?></label>
+                                    <input class="form-control" placeholder="<?php echo
+                                        $Passwords; ?>" name="password" type="password" value="">
+                                </div>
+
+                                <hr>
+                                <button type="submit" name="login" class="btn btn-success btn-block"><span
+                                        class="glyphicon glyphicon-log-in"></span> <?php echo
+                                            $SignIn; ?></button>
+                                <hr>
+                                <a href="signUp.php" class="btn btn-info btn-block"> <span
+                                        class="glyphicon glyphicon-pencil"></span> <?php echo
+                                            $RegisterAnAccount; ?></a>
                             </fieldset>
                         </form>
                     </div>
@@ -141,8 +163,8 @@ $RegisterAnAccount; ?></a>
             </div>
         </div>
         <div class="row text-center">
-            <small >copyright © <?php echo Date('Y'); ?> Money Manager | All right Reserved</small><br>
-            <small >Powered By Developer</small>
+            <small>copyright © <?php echo Date('Y'); ?> Money Manager | All right Reserved</small><br>
+            <small>Develop By PlayOn24</small>
         </div>
     </div>
 

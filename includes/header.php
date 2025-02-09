@@ -14,6 +14,11 @@ include('includes/notification.php');
     <meta name="author" content="">
 
     <title>TWILLON</title>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
@@ -108,6 +113,10 @@ include('includes/notification.php');
                                 <?php echo $Dashboard; ?><span class="fa arrow"></a>
                         </li>
                         <li>
+                            <a <?php ActiveClass("index.php?page=role"); ?> href="index.php?page=role"><i
+                                    class="glyphicon glyphicon-send"></i> Role<span class="fa arrow"></a>
+                        </li>
+                        <li>
                             <a <?php ActiveClass("index.php?page=Department"); ?> href="index.php?page=Department"><i
                                     class="glyphicon glyphicon-list-alt"></i> <?php echo $Department; ?><span
                                     class="fa arrow"></a>
@@ -116,6 +125,13 @@ include('includes/notification.php');
                             <a <?php ActiveClass("index.php?page=User"); ?> href="index.php?page=User">
                                 <i class="glyphicon glyphicon-user"></i>
                                 Users
+                                <span class="fa arrow">
+                            </a>
+                        </li>
+                        <li>
+                            <a <?php ActiveClass("index.php?page=Balance"); ?> href="index.php?page=Balance">
+                                <i class="glyphicon glyphicon-qrcode"></i>
+                                User Balance
                                 <span class="fa arrow">
                             </a>
                         </li>
