@@ -82,7 +82,7 @@ include('includes/global.php');
 <div id="page-wrapper">
     <div class="row">
         <div class="col-lg-12">
-            <h1 class="page-header"><?php echo $ManageCategoriesExpense; ?> </h1>
+            <h1 class="page-header">Expense Head </h1>
         </div>
         <!-- /.col-lg-12 -->
     </div>
@@ -91,12 +91,12 @@ include('includes/global.php');
         echo $msgBox;
     } ?>
     <a href="#new" class="btn white btn-success" data-toggle="modal"><i class="fa fa-plus"></i>
-        <?php echo $AddNewCategory; ?></a>
+        Add Expense Head</a>
     <div class="row">
         <div class="col-lg-12">
             <div class="panel panel-red">
                 <div class="panel-heading">
-                    <i class="fa fa-bar-chart-o fa-fw"></i> <?php echo $ListCategory; ?>
+                    <i class="fa fa-bar-chart-o fa-fw"></i> List of Expense
                 </div>
                 <div class="panel-body">
                     <div class="pull-right">
@@ -224,15 +224,10 @@ include('includes/global.php');
             <form action="" method="post">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    <h4 class="modal-title" id="myModalLabel"><?php echo $AddNewCategory; ?></h4>
+                    <h4 class="modal-title" id="myModalLabel">Add New Head</h4>
                 </div>
                 <div class="modal-body">
-                    <!-- Category Input Field -->
-                    <div class="form-group">
-                        <label for="category"><?php echo $Category; ?></label>
-                        <input class="form-control" required placeholder="<?php echo $Category; ?>" name="category"
-                            type="text" autofocus>
-                    </div>
+
 
                     <div class="form-group">
                         <label for="department"><?php echo $Department; ?></label>
@@ -243,7 +238,12 @@ include('includes/global.php');
                             <?php } ?>
                         </select>
                     </div>
-
+                    <!-- Category Input Field -->
+                    <div class="form-group">
+                        <label for="category">Head</label>
+                        <input class="form-control" required placeholder="Expense Head" name="category"
+                            type="text" autofocus>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" name="submit" class="btn btn-success"><span

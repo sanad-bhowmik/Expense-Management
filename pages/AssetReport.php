@@ -1,216 +1,256 @@
 <?php
 
-//Include Functions
+// Include Functions
 include('includes/Functions.php');
 
-//Include Notifications
+// Include Notifications
 include('includes/notification.php');
+// Check if delete button was pressed
+if (isset($_POST['delete_id'])) {
+	$deleteId = $_POST['delete_id']; // Get the ID to be deleted
 
+	// Perform the deletion query
+	$DeleteIncomeQuery = "DELETE FROM assets WHERE AssetsId = $deleteId";
+	$deleteResult = mysqli_query($mysqli, $DeleteIncomeQuery);
 
-$SearchTerm = '';
-
-if (isset($_POST['submitin'])) {
-
-	$IncomeIds = $_POST['incomeid'];
-	//Get Account Id
-	$GetAccountId = "SELECT AccountId FROM assets WHERE UserId = $UserId and AssetsId = $IncomeIds";
-	$AccountId = mysqli_query($mysqli, $GetAccountId);
-	$ColId = mysqli_fetch_array($AccountId);
-	$AccId = $ColId['AccountId'];
-	//Delete Income
-	$Delete = "DELETE FROM assets WHERE AssetsId = $IncomeIds";
-	$DeleteI = mysqli_query($mysqli, $Delete);
-
-	//Update Total Income
-	$TotalIncome = "UPDATE totals SET totals.Totals = (SELECT SUM(Amount) FROM assets where assets.UserId = $UserId AND assets.AccountId = totals.AccountId) \n"
-		. "	WHERE totals.UserId = $UserId AND totals.AccountId = $AccId";
-	$UpdateTotalIncome = mysqli_query($mysqli, $TotalIncome);
-	if (!$UpdateTotalIncome) {
-		$Gagal = "QUERY ERROR";
-		$msgBox = alertBox($Gagal);
+	if ($deleteResult) {
+		// Record deleted successfully
+		// echo "<script>alert('Income record deleted successfully');</script>";
+	} else {
+		// Handle error
+		echo "<script>alert('Error deleting record: " . mysqli_error($mysqli) . "');</script>";
 	}
-	//$msgBox = alertBox($AccId);
-	$msgBox = alertBox($DeleteIncome);
 }
+$SearchTerm = '';
+$DepartmentId = ''; // Default empty value for department
+$CategorySearch = ''; // Default empty value for category search (Head)
+$FromDate = '';
+$ToDate = '';
 
-//Get Report Income History
-$GetIncomeHistory = "SELECT assets.*, 
-                             category.CategoryName, 
-                             account.AccountName, 
-                             department.name AS DepartmentName,
-                             user.FirstName 
-                      FROM assets 
-                      LEFT JOIN category ON assets.CategoryId = category.CategoryId 
-                      LEFT JOIN account ON assets.AccountId = account.AccountId
-                      LEFT JOIN department ON assets.department_id = department.id
-                      LEFT JOIN user ON assets.UserId = user.UserId
-                      WHERE assets.UserId = $UserId 
-                      ORDER BY assets.Date DESC";
-$IncomeHistory = mysqli_query($mysqli, $GetIncomeHistory);
-
-
-
-// Get all by month Income
-$GetAllIncomeDate = "SELECT SUM(Amount) AS Amount FROM assets WHERE UserId = $UserId AND MONTH(Date) = MONTH (CURRENT_DATE())";
-$GetAIncomeDate = mysqli_query($mysqli, $GetAllIncomeDate);
-$IncomeColDate = mysqli_fetch_assoc($GetAIncomeDate);
-
-// Get all by today Income
-$GetAllIncomeDateToday = "SELECT SUM(Amount) AS Amount FROM assets WHERE UserId = $UserId AND Date = CURRENT_DATE()";
-$GetAIncomeDateToday = mysqli_query($mysqli, $GetAllIncomeDateToday);
-$IncomeColDateToday = mysqli_fetch_assoc($GetAIncomeDateToday);
-
-
-
-// Search Income
 if (isset($_POST['searchbtn'])) {
-	$SearchTerm = $_POST['search'];
-	$GetIncomeHistory = "SELECT * from assets left join category on assets.CategoryId = category.CategoryId left join account on assets.AccountId = account.AccountId where 
-					(assets.Title like '%$SearchTerm%' 
-					OR account.AccountName like '%$SearchTerm%'
-					OR assets.Description like '%$SearchTerm%' 
-					OR category.CategoryName like '%$SearchTerm%')
-					AND assets.UserId = $UserId ORDER BY assets.Date DESC";
+	$SearchTerm = isset($_POST['search']) ? $_POST['search'] : '';
+	$FromDate = isset($_POST['from_date']) ? $_POST['from_date'] : '';
+	$ToDate = isset($_POST['to_date']) ? $_POST['to_date'] : '';
+	$DepartmentId = isset($_POST['department_id']) ? $_POST['department_id'] : '';
+	$CategorySearch = isset($_POST['category_search']) ? $_POST['category_search'] : '';
+
+	// Debugging using var_dump
+	var_dump($SearchTerm, $FromDate, $ToDate, $DepartmentId, $CategorySearch); // Print the values of these variables
+
+	// Filters
+	$dateFilter = "";
+	$DepartmentFilter = "";
+	$CategoryFilter = "";
+
+	if (!empty($FromDate) && !empty($ToDate)) {
+		$dateFilter = " AND assets.Date BETWEEN '$FromDate' AND '$ToDate' ";
+	} elseif (!empty($FromDate)) {
+		$dateFilter = " AND assets.Date >= '$FromDate' ";
+	} elseif (!empty($ToDate)) {
+		$dateFilter = " AND assets.Date <= '$ToDate' ";
+	}
+
+	if (!empty($DepartmentId)) {
+		$DepartmentFilter = " AND assets.department_id = $DepartmentId";
+	}
+
+	if (!empty($CategorySearch)) {
+		$CategoryFilter = " AND category.CategoryName LIKE '%$CategorySearch%'";
+	}
+
+	// Query with all applied filters
+	$GetIncomeHistory = "SELECT assets.*, 
+                         category.CategoryName, 
+                         account.AccountName, 
+                         department.name AS DepartmentName,
+                         user.FirstName 
+                         FROM assets 
+                         LEFT JOIN category ON assets.CategoryId = category.CategoryId 
+                         LEFT JOIN account ON assets.AccountId = account.AccountId
+                         LEFT JOIN department ON assets.department_id = department.id
+                         LEFT JOIN user ON assets.UserId = user.UserId
+                        
+                         AND (assets.Title LIKE '%$SearchTerm%' 
+                         OR account.AccountName LIKE '%$SearchTerm%'
+                         OR assets.Description LIKE '%$SearchTerm%') 
+                         $dateFilter
+                         $DepartmentFilter
+                         $CategoryFilter
+                         ORDER BY assets.Date DESC";
+
+	$IncomeHistory = mysqli_query($mysqli, $GetIncomeHistory);
+
+} else {
+	// Default query (No filters applied)
+	$GetIncomeHistory = "SELECT assets.*, 
+                         category.CategoryName, 
+                         account.AccountName, 
+                         department.name AS DepartmentName,
+                         user.FirstName 
+                         FROM assets 
+                         LEFT JOIN category ON assets.CategoryId = category.CategoryId 
+                         LEFT JOIN account ON assets.AccountId = account.AccountId
+                         LEFT JOIN department ON assets.department_id = department.id
+                         LEFT JOIN user ON assets.UserId = user.UserId
+                        
+                         ORDER BY assets.Date DESC";
+
 	$IncomeHistory = mysqli_query($mysqli, $GetIncomeHistory);
 
 }
 
+// Get Department List for dropdown
+$GetDepartments = "SELECT id, name FROM department";
+$Departments = mysqli_query($mysqli, $GetDepartments);
 
 
-//Include Global page
 include('includes/global.php');
-
 
 ?>
 
 <div id="page-wrapper">
 	<div class="row">
 		<div class="col-lg-12">
-			<h1 class="page-header"><?php echo $AssetReports; ?></h1>
+			<h1 class="page-header">Incomes</h1>
 		</div>
-		<!-- /.col-lg-12 -->
 	</div>
-	<!-- /.row -->
-	<?php if ($msgBox) {
-		echo $msgBox;
-	} ?>
-	<a href="index.php?page=Transaction" class="btn white btn-success "><i class="fa fa-plus"></i>
-		<?php echo $NewTransaction; ?></a>
-	<a href="pages/IncomeReportPdf.php?filter=<?php echo $SearchTerm; ?>" class="btn white btn-warning"><i
-			class="glyphicon glyphicon-download-alt"></i> <?php echo $DownloadIncomeReports; ?></a>
-	<a href="pages/IncomeReportCSV.php?filter=<?php echo $SearchTerm; ?>" class="btn white btn-warning"><i
-			class="glyphicon glyphicon-download-alt"></i> <?php echo $DownloadIncomeCSV; ?></a>
-	<div class="row">
+	<a href="index.php?page=addIncome" class="btn white btn-success "><i class="fa fa-plus"></i>
+		New Income</a>
+	<a href="pages/ExpenseReportPdf.php?filter=<?php echo $SearchTerm; ?>" class="btn white btn-warning"><i
+			class="glyphicon glyphicon-download-alt"></i> <?php echo $DownloadExpenseReports; ?></a>
+	<a href="pages/ExpenseReportCSV.php?filter=<?php echo $SearchTerm; ?>" class="btn white btn-warning"><i
+			class="glyphicon glyphicon-download-alt"></i> <?php echo $DownloadExpenseCSV; ?></a>
 
+	<div class="row">
 		<div class="col-lg-12">
 			<div class="panel panel-primary">
 				<div class="panel-heading">
-					<i class="glyphicon glyphicon-stats"></i> <?php echo $HistoryofAssets; ?>
-
+					<i class="glyphicon glyphicon-stats"></i> History of Income
 				</div>
-				<!-- /.panel-heading -->
 				<div class="panel-body">
-					<div class="pull-right">
-						<form action="" method="post">
-							<div class="form-group input-group col-lg-5	pull-right">
-								<input type="text" name="search" placeholder="<?php echo $Search; ?>"
-									class="form-control">
-								<span class="input-group-btn">
-									<button class="btn btn-primary" name="searchbtn" type="input"><i
-											class="fa fa-search"></i>
-									</button>
-								</span>
+					<form action="" method="post">
+						<div class="form-group d-flex align-items-end gap-2 flex-wrap"
+							style="display: flex; gap: 10px; margin-bottom: 35px;">
+							<!-- From Date -->
+							<div class="d-flex flex-column">
+								<label for="from_date" class="fw-bold">From Date</label>
+								<input type="date" name="from_date" id="from_date" class="form-control"
+									value="<?php echo $FromDate; ?>">
 							</div>
-						</form>
 
-					</div>
-					<div class="">
-						<table class="table table-bordered table-hover table-striped" id="assetsdata">
-							<thead>
-								<tr>
-									<th class="text-left"><?php echo $Category; ?></th>
-									<th class="text-left"><?php echo $Department; ?></th>
-									<th class="text-left">Add By</th> <!-- New User Column -->
-									<th class="text-left"><?php echo $Amount; ?></th>
-									<th class="text-left"><?php echo $Date; ?></th>
-									<th class="text-left"><?php echo $Action; ?></th>
-								</tr>
-							</thead>
+							<!-- To Date -->
+							<div class="d-flex flex-column">
+								<label for="to_date" class="fw-bold">To Date</label>
+								<input type="date" name="to_date" id="to_date" class="form-control"
+									value="<?php echo $ToDate; ?>">
+							</div>
 
-							<tbody>
-								<?php while ($col = mysqli_fetch_assoc($IncomeHistory)) { ?>
-									<tr>
-										
-										<td><?php echo $col['CategoryName']; ?></td> <!-- Category -->
-										<td><?php echo $col['DepartmentName']; ?></td> <!-- Department -->
-										<td><?php echo $col['FirstName']; ?></td> <!-- User's First Name -->
-										<td><?php echo $ColUser['Currency'] . ' ' . number_format($col['Amount']); ?></td>
-										<td><?php echo date("M d Y", strtotime($col['Date'])); ?></td> <!-- Date -->
-										<td class="notification">
-											<a href="index.php?page=ManageIncome&id=<?php echo $col['AssetsId']; ?>"
-												data-toggle="modal">
-												<span class="btn btn-primary btn-xs glyphicon glyphicon-edit"
-													data-toggle="tooltip" data-placement="left" title=""
-													data-original-title="<?php echo $EditIncome; ?>"></span>
-											</a>
-											<a href="#DeleteIncome<?php echo $col['AssetsId']; ?>" data-toggle="modal">
-												<span class="glyphicon glyphicon-trash btn btn-primary btn-xs"
-													data-toggle="tooltip" data-placement="right" title=""
-													data-original-title="<?php echo $DeleteIncomes; ?>"></span>
-											</a>
-										</td> <!-- Actions -->
-									</tr>
-								</tbody>
+							<!-- Search by Head (Category) -->
+							<div class="d-flex flex-column">
+								<label for="category_search" class="fw-bold">Search by Head (Category)</label>
+								<input type="text" name="category_search" id="category_search" class="form-control"
+									placeholder="Enter category name" value="<?php echo $CategorySearch; ?>">
+							</div>
 
+							<!-- Department Dropdown -->
+							<div class="d-flex flex-column">
+								<label for="department_id" class="fw-bold">Department</label>
+								<select name="department_id" id="department_id" class="form-control">
+									<option value="">-- Select Department --</option>
+									<?php while ($department = mysqli_fetch_assoc($Departments)) { ?>
+										<option value="<?php echo $department['id']; ?>" <?php echo ($department['id'] == $DepartmentId) ? 'selected' : ''; ?>>
+											<?php echo $department['name']; ?>
+										</option>
+									<?php } ?>
+								</select>
+							</div>
 
-								<!-- Delete Modal -->
-								<div class="modal fade" id="DeleteIncome<?php echo $col['AssetsId']; ?>" tabindex="-1"
-									role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-									<div class="modal-dialog">
-										<div class="modal-content">
-											<form action="" method="post">
-												<div class="modal-header">
-													<button type="button" class="close" data-dismiss="modal"
-														aria-hidden="true">&times;</button>
-													<h4 class="modal-title" id="myModalLabel"><?php echo $AreYouSure; ?>
-													</h4>
-												</div>
-												<div class="modal-body">
-													<?php echo $ThisItem; ?>
-												</div>
-												<div class="modal-footer">
-													<input type="hidden" id="incomeid" name="incomeid"
-														value="<?php echo $col['AssetsId']; ?>" />
-													<button type="input" id="submit" name="submitin"
-														class="btn btn-primary"><?php echo $Yes; ?></button>
-													<button type="button" class="btn btn-default"
-														data-dismiss="modal"><?php echo $Cancel; ?></button>
-											</form>
-										</div>
-									</div>
-								</div>
+							<!-- Search & Reset Buttons -->
+							<div class="d-flex align-items-end">
+								<button class="btn btn-primary" name="searchbtn" type="submit"
+									style="margin-top: 26px;">
+									<i class="fa fa-search"></i>
+								</button>
+								<button class="btn btn-danger" type="reset" style="margin-top: 26px;"
+									onclick="window.location='http://localhost/money/index.php?page=AssetReport';">
+									<i class="fa fa-times"></i>
+								</button>
+							</div>
 						</div>
-					<?php } ?>
+					</form>
+
+					<script>
+						document.querySelector("button[type='reset']").addEventListener("click", function () {
+							document.querySelector("#from_date").value = "";
+							document.querySelector("#to_date").value = "";
+							document.querySelector("#category_search").value = "";
+							document.querySelector("#department_id").value = "";
+						});
+					</script>
+
+					<table class="table table-bordered table-hover table-striped" id="assetsdata">
+						<thead>
+							<tr>
+								<th class="text-left">Head</th>
+								<th class="text-left">Department</th>
+								<th class="text-left">Added By</th>
+								<th class="text-left">Amount</th>
+								<th class="text-left">Date</th>
+								<th class="text-left">File</th>
+								<th class="text-left">Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php while ($col = mysqli_fetch_assoc($IncomeHistory)) { ?>
+								<tr>
+									<td><?php echo $col['CategoryName']; ?></td>
+									<td><?php echo $col['DepartmentName']; ?></td>
+									<td><?php echo $col['FirstName']; ?></td>
+									<td><?php echo number_format($col['Amount']); ?></td>
+									<td><?php echo date("M d Y", strtotime($col['Date'])); ?></td>
+									<td>
+										<?php
+										if (!empty($col['file_path'])) {
+											// Assuming the file_path contains the absolute path (e.g., 'C:/xampp/htdocs/Money/file/income/1739768350_msc.png')
+									
+											// Strip the 'C:/xampp/htdocs/Money/' part from the file path
+											$baseDir = 'C:/xampp/htdocs/Money/'; // The root directory of your project
+											$relativeFilePath = str_replace($baseDir, '', $col['file_path']); // Remove the local file path prefix
+									
+											// Now build the URL for the file
+											$filePath = 'http://localhost/Money/' . $relativeFilePath;
+
+											echo '<a href="' . $filePath . '" target="_blank">
+               								 <img src="./picture.png" alt="View File" title="View" width="24" height="24">
+             								 </a>';
+										} else {
+											echo 'No file';
+										}
+										?>
+									</td>
+
+									<td>
+										<!-- Delete Button -->
+										<form action="" method="POST" onsubmit="return confirmDelete()">
+											<input type="hidden" name="delete_id" value="<?php echo $col['AssetsId']; ?>">
+											<button type="submit" class="glyphicon glyphicon-trash btn btn-primary btn-xs">
+												Delete
+											</button>
+										</form>
+									</td>
+								</tr>
+							<?php } ?>
+						</tbody>
 					</table>
 
 				</div>
-				<!-- /.table-responsive -->
-
 			</div>
-			<!-- /.panel-body -->
 		</div>
-		<!-- /.panel -->
-
-	</div>
-
-
-	<!-- /.col-lg-4 -->
-</div>
-<!-- /.row -->
-<div class="row">
-	<div class="col-lg-12">
-
 	</div>
 </div>
-</div>
-<!-- /#page-wrapper -->
+
+<script>
+	function confirmDelete() {
+		return confirm("Are you sure you want to delete this income record?");
+	}
+</script>

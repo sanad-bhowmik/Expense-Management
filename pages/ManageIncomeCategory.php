@@ -91,7 +91,7 @@ include('includes/global.php');
 <div id="page-wrapper">
     <div class="row">
         <div class="col-lg-12">
-            <h1 class="page-header"><?php echo $ManageCategoriesIncome; ?> </h1>
+            <h1 class="page-header">Income Head </h1>
         </div>
         <!-- /.col-lg-12 -->
     </div>
@@ -100,7 +100,7 @@ include('includes/global.php');
         echo $msgBox;
     } ?>
     <a href="#new" class="btn white btn-success " data-toggle="modal"><i class="fa fa-plus"></i>
-        <?php echo $AddNewCategory; ?></a>
+        Add Income Head</a>
     <div class="row">
 
 
@@ -110,7 +110,7 @@ include('includes/global.php');
             <!-- /.panel -->
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    <i class="fa fa-bar-chart-o fa-fw"></i> <?php echo $ListCategory; ?>
+                    <i class="fa fa-bar-chart-o fa-fw"></i> Income Head List
                 </div>
                 <div class="panel-body">
                     <div class="pull-right">
@@ -247,14 +247,10 @@ include('includes/global.php');
             <form action="" method="post">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    <h4 class="modal-title" id="myModalLabel"><?php echo $AddNewCategory; ?></h4>
+                    <h4 class="modal-title" id="myModalLabel">Add Income Head</h4>
                 </div>
                 <div class="modal-body">
-                    <div class="form-group">
-                        <label for="category"><?php echo $Category; ?></label>
-                        <input class="form-control" required placeholder="<?php echo $Category; ?>" name="category"
-                            type="text" autofocus>
-                    </div>
+
                     <div class="form-group">
                         <label for="department"><?php echo $Department; ?></label>
                         <select class="form-control" name="department_id" required>
@@ -263,6 +259,12 @@ include('includes/global.php');
                                 <option value="<?php echo $row['id']; ?>"><?php echo $row['name']; ?></option>
                             <?php } ?>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Income Head</label>
+                        <input class="form-control" required placeholder="Income Head" name="category" type="text"
+                            autofocus>
                     </div>
                 </div>
 

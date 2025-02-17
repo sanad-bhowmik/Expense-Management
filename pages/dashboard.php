@@ -93,28 +93,36 @@ $Budgets = mysqli_query($mysqli, $Getbudgets);
                         </a>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <div class="row">
-                                <div class="col-xs-3">
-                                    <i class="glyphicon glyphicon-calendar fa-4x"></i>
-                                </div>
-                                <div class="col-xs-12 text-left">
-                                    <h2><?php echo $ColUser['Currency'].' '.number_format($IncomeColDate['Amount']); ?></h2>
-                                    <div><?php echo $CurrentIncome;?></div>
+                
+                <?php
+                        if ($ColUser['LastName'] == 'admin') {
+                        ?>
+                            <div class="col-lg-3 col-md-6">
+                                <div class="panel panel-primary">
+                                    <div class="panel-heading">
+                                        <div class="row">
+                                            <div class="col-xs-3">
+                                                <i class="glyphicon glyphicon-calendar fa-4x"></i>
+                                            </div>
+                                            <div class="col-xs-12 text-left">
+                                                <h2><?php echo $ColUser['Currency'].' '.number_format($IncomeColDate['Amount']); ?></h2>
+                                                <div><?php echo $CurrentIncome;?></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <a href="#">
+                                        <div class="panel-footer">
+                                            <span class="pull-left"></span>
+                                            <span class="pull-right"></span>
+                                            <div class="clearfix"></div>
+                                        </div>
+                                    </a>
                                 </div>
                             </div>
-                        </div>
-                        <a href="#">
-                            <div class="panel-footer">
-                                <span class="pull-left"></span>
-                                <span class="pull-right"></span>
-                                <div class="clearfix"></div>
-                            </div>
-                        </a>
-                    </div>
-                </div>
+                        <?php
+                        }
+                        ?>
+
                 <div class="col-lg-3 col-md-6">
                     <div class="panel panel-red">
                         <div class="panel-heading">
@@ -160,15 +168,19 @@ $Budgets = mysqli_query($mysqli, $Getbudgets);
                     </div>
                 </div>
             </div>
-            <!-- /.row -->
+          
             <div class="row">
-                <div class="col-lg-6">
+                <div class="col-lg-6">  <?php
+// Check if the user's LastName is 'admin' before displaying the menu
+                if ($ColUser['LastName'] == 'admin') {
+?>
+
                     <div class="panel panel-primary">
                         <div class="panel-heading">
                             <i class="fa fa-bar-chart-o fa-fw"></i> <?php echo $TenIncome;?>
                             
                         </div>
-                        <!-- /.panel-heading -->
+                      
                         <div class="panel-body">
                            <div>
 								<div class="table-responsive">
@@ -200,9 +212,12 @@ $Budgets = mysqli_query($mysqli, $Getbudgets);
                            <div class="text-center"><a href="index.php?page=AssetReport"><?php echo $ViewDetails;?></a></div>
                            </div>
                         </div>
+                        
                         <!-- /.panel-body -->
                     </div>
-                    
+                    <?php
+                        }
+                        ?>
                     <!-- /.panel -->
                     <div class="panel panel-info">
                         <div class="panel-heading">

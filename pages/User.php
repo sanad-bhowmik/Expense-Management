@@ -1,12 +1,22 @@
 <?php
+$dbuser = "root";
+$dbpassword = "";
+$dbname = "money";
+$dbhost = "localhost";
 
+$connection = mysqli_connect($dbhost, $dbuser, $dbpassword, $dbname);
+
+// Check connection
+if (!$connection) {
+    die("Database Connection Failed: " . mysqli_connect_error());
+}
 //Include Functions
 include('includes/Functions.php');
 
 //Include Notifications
 include('includes/notification.php');
 
-//delete category
+// delete user
 if (isset($_POST['delete_user'])) {
     // Sanitize and retrieve the user ID
     $UserId = (int) $_POST['userid'];
@@ -38,7 +48,6 @@ if (isset($_POST['delete_user'])) {
     }
 }
 
-
 // Edit
 if (isset($_POST['edit'])) {
     // Sanitize input
@@ -66,62 +75,81 @@ if (isset($_POST['edit'])) {
     }
 }
 
-
 // Add new user
 if (isset($_POST['submit'])) {
     // Sanitize and get form data
     $first_name = $mysqli->real_escape_string($_POST["first_name"]);
     $last_name = $mysqli->real_escape_string($_POST["last_name"]);
     $email = $mysqli->real_escape_string($_POST["email"]);
-    $password = $_POST["password"];  // Store password as VARCHAR, no need for encryption here
+    $password = $_POST["password"];
     $status = 1;
-    $added_by = $_SESSION['UserId']; // Assuming the logged-in user’s ID is stored in the session
+    $added_by = $_SESSION['UserId'];
+    $department_id = $_POST['department'];
 
-    // SQL Query
-    $sql = "INSERT INTO department_user (FirstName, LastName, Email, Password, status, created_at, updated_at, added_by)
-            VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?)";
+    $sql = "INSERT INTO department_user (FirstName, LastName, Email, Password, status, created_at, updated_at, added_by, department_id)
+            VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
 
     if ($stmt = $mysqli->prepare($sql)) {
-        $stmt->bind_param('ssssii', $first_name, $last_name, $email, $password, $status, $added_by);
+        $stmt->bind_param('ssssiii', $first_name, $last_name, $email, $password, $status, $added_by, $department_id);
 
         if ($stmt->execute()) {
             $msgBox = alertBox("User has been created successfully!");
         } else {
-            // Debugging: show error message
             $msgBox = alertBox("Error: Unable to create user. " . $stmt->error, "error");
         }
         $stmt->close();
     } else {
-        // Debugging: show error message if SQL query preparation fails
         $msgBox = alertBox("Error: Unable to prepare SQL query. " . $mysqli->error, "error");
     }
 }
 
-
-
-//Get list category
-$GetUserList = "SELECT UserId, FirstName, LastName, Email FROM department_user ORDER BY FirstName ASC";
-$GetUsers = mysqli_query($mysqli, $GetUserList);
-// Search
+// Get list category
+$GetUserList = "
+    SELECT du.UserId, du.FirstName, du.LastName, du.Email, du.Password, d.name AS DepartmentName
+    FROM department_user du
+    LEFT JOIN department d ON du.department_id = d.id
+    ORDER BY du.created_at ASC
+";
 
 // Search
 $searchQuery = ""; // Default query condition
 
+// Check if either filter is set
 if (isset($_POST['searchbtn'])) {
-    $SearchTerm = $mysqli->real_escape_string($_POST['search']); // Prevent SQL injection
-    $searchQuery = " WHERE name LIKE '%$SearchTerm%' ";
+    $SearchTerm = $mysqli->real_escape_string($_POST['search']);
+    $DepartmentFilter = isset($_POST['department_filter']) ? (int) $_POST['department_filter'] : 0;
+
+    if ($SearchTerm && $DepartmentFilter) {
+        // Filter by both name and department
+        $searchQuery = " WHERE (FirstName LIKE '%$SearchTerm%' OR LastName LIKE '%$SearchTerm%') AND du.department_id = $DepartmentFilter ";
+    } elseif ($SearchTerm) {
+        // Filter only by name
+        $searchQuery = " WHERE FirstName LIKE '%$SearchTerm%' OR LastName LIKE '%$SearchTerm%' ";
+    } elseif ($DepartmentFilter) {
+        // Filter only by department
+        $searchQuery = " WHERE du.department_id = $DepartmentFilter ";
+    }
 }
 
-//Include Global page
+$GetUserListWithSearch = "
+    SELECT du.UserId, du.FirstName, du.LastName, du.Email, du.Password, d.name AS DepartmentName 
+    FROM department_user du
+    LEFT JOIN department d ON du.department_id = d.id
+    " . $searchQuery . " 
+    ORDER BY du.created_at ASC
+";
+
+// Execute the search query
+$GetUsers = mysqli_query($mysqli, $GetUserListWithSearch);
+
+// Include Global page
 include('includes/global.php');
-
-
 ?>
 
 <div id="page-wrapper">
     <div class="row">
         <div class="col-lg-12">
-            <h1 class="page-header">Add New User </h1>
+            <h1 class="page-header">Add New User</h1>
         </div>
         <!-- /.col-lg-12 -->
     </div>
@@ -129,156 +157,85 @@ include('includes/global.php');
     <?php if ($msgBox) {
         echo $msgBox;
     } ?>
-    <a href="#new" class="btn white btn-success " data-toggle="modal"><i class="fa fa-plus"></i>
-        Add New User</a>
+    <a href="#new" class="btn white btn-success" data-toggle="modal"><i class="fa fa-plus"></i> Add New User</a>
     <div class="row">
-
         <div class="col-lg-12">
-
-            <!-- /.panel -->
             <div class="panel panel-red">
                 <div class="panel-heading">
                     <i class="fa fa-bar-chart-o fa-fw"></i> List Users
                 </div>
                 <div class="panel-body">
-                    <div class="pull-right">
+                    <div class="pull-left">
                         <form action="" method="post">
-                            <div class="form-group input-group col-lg-5 pull-right">
-                                <input type="text" name="search" placeholder="Search by Name" class="form-control">
-                                <span class="input-group-btn">
-                                    <button class="btn btn-primary" name="searchbtn" type="submit">
+                            <div class="form-group input-group col-lg-12" style="display: flex; align-items: center;">
+                                <!-- Department Dropdown -->
+                                <select class="form-control" name="department_filter" id="department_filter"
+                                    style="margin-right: 10px;">
+                                    <option value="">Select Department</option>
+                                    <?php
+                                    // Fetch department data from the database
+                                    $sql = "SELECT id, name FROM department WHERE status = 1 ORDER BY name ASC";
+                                    $result = mysqli_query($mysqli, $sql);
+                                    while ($row = mysqli_fetch_assoc($result)) {
+                                        echo "<option value='" . $row['id'] . "'>" . $row['name'] . "</option>";
+                                    }
+                                    ?>
+                                </select>
+
+                                <!-- Search Input -->
+                                <input type="text" name="search" placeholder="Search by Name" class="form-control"
+                                    value="<?php echo isset($_POST['search']) ? $_POST['search'] : ''; ?>"
+                                    style="margin-right: 10px;">
+
+                                <span class="input-group-btn" style="display: flex; align-items: center;">
+                                    <!-- Search Button -->
+                                    <button class="btn btn-primary" name="searchbtn" type="submit"
+                                        style="margin-right: 10px;">
                                         <i class="fa fa-search"></i>
                                     </button>
+
+                                    <!-- Cross icon button to clear the search input -->
+                                    <button class="btn btn-danger" type="button" onclick="clearSearch()">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                    <script>
+                                        function clearSearch() {
+                                            document.querySelector('input[name="search"]').value = '';
+                                            document.querySelector('form').submit(); // Resubmit the form to clear the search
+                                        }
+                                    </script>
                                 </span>
                             </div>
                         </form>
-
-
                     </div>
                     <div class="">
                         <table class="table table-striped table-bordered table-hover" id="assetsdata">
                             <thead>
                                 <tr>
                                     <th class="text-left">User Name</th>
-                                    <th class="text-left">Email</th>
-                                    <!-- <th class="text-left"><?php echo $Action; ?></th> -->
+                                    <th class="text-left">Password</th>
+                                    <th class="text-left">Full Name</th>
+                                    <th class="text-left">Department</th>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 <?php while ($col = mysqli_fetch_assoc($GetUsers)) { ?>
                                     <tr>
-                                        <!-- Display the full name from FirstName and LastName -->
-                                        <td><?php echo $col['FirstName'] . ' ' . $col['LastName']; ?></td>
-                                        <td><?php echo $col['Email']; ?></td>
-
-                                        <!-- <td colspan="2" class="notification">
-                                            <a href="#EditUser<?php echo $col['id']; ?>" data-toggle="modal">
-                                                <span class="btn btn-primary btn-xs glyphicon glyphicon-edit"
-                                                    data-toggle="tooltip" data-placement="left" title="Edit User"></span>
-                                            </a>
-                                            <a href="#DeleteUser<?php echo $col['id']; ?>" data-toggle="modal">
-                                                <span class="glyphicon glyphicon-trash btn btn-primary btn-xs"
-                                                    data-toggle="tooltip" data-placement="right" title="Delete User"></span>
-                                            </a>
-                                        </td> -->
+                                        <td><?php echo $col['FirstName']; ?></td>
+                                        <td><?php echo $col['Password']; ?></td>
+                                        <td><?php echo $col['LastName']; ?></td>
+                                        <td><?php echo $col['DepartmentName']; ?></td>
                                     </tr>
                                 </tbody>
-                                <div class="modal fade" id="DeleteUser<?php echo $col['id']; ?>" tabindex="-1" role="dialog"
-                                    aria-labelledby="myModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <form action="" method="post">
-                                                <div class="modal-header">
-                                                    <button type="button" class="close" data-dismiss="modal"
-                                                        aria-hidden="true">&times;</button>
-                                                    <h4 class="modal-title" id="myModalLabel"><?php echo $AreYouSure; ?>
-                                                    </h4>
-                                                </div>
-                                                <div class="modal-body">
-                                                    Sure About this?
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <input type="hidden" name="userid" value="<?php echo $col['id']; ?>" />
-                                                    <button type="submit" name="delete_user" class="btn btn-danger">
-                                                        <?php echo $Yes; ?>
-                                                    </button>
-                                                    <button type="button" class="btn btn-default" data-dismiss="modal">
-                                                        <?php echo $Cancel; ?>
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-
-                                <!-- /.modal-dialog -->
-                        </div>
-                        <!-- /.modal -->
-                        <!-- /.edit category -->
-                        <div class="modal fade" id="EditUser<?php echo $col['id']; ?>" tabindex="-1" role="dialog"
-                            aria-labelledby="myModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <form action="" method="post">
-                                        <div class="modal-header">
-                                            <button type="button" class="close" data-dismiss="modal"
-                                                aria-hidden="true">&times;</button>
-                                            <h4 class="modal-title" id="myModalLabel">Edit User</h4>
-                                        </div>
-                                        <div class="modal-body">
-                                            <!-- Name Field -->
-                                            <div class="form-group">
-                                                <label for="user_name">User Name</label>
-                                                <input class="form-control" required name="user_name"
-                                                    value="<?php echo $col['name']; ?>" type="text" autofocus>
-                                            </div>
-
-                                            <!-- Email Field -->
-                                            <div class="form-group">
-                                                <label for="user_email">Email</label>
-                                                <input class="form-control" required name="user_email"
-                                                    value="<?php echo $col['email']; ?>" type="email">
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <input type="hidden" name="user_id" value="<?php echo $col['id']; ?>" />
-                                            <button type="submit" name="edit" class="btn btn-primary">Save Changes</button>
-                                            <button type="button" class="btn btn-default"
-                                                data-dismiss="modal">Cancel</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-
-                        <!-- /.modal-dialog -->
+                            <?php } ?>
+                        </table>
                     </div>
-                    <!-- /.modal -->
-
-
-
-                <?php } ?>
-
-                </table>
+                </div>
             </div>
-            <!-- /.table-responsive -->
-
         </div>
-
     </div>
-
 </div>
-<!-- /.col-lg-4 -->
-</div>
-<!-- /.row -->
-
-</div>
-<!-- /#page-wrapper -->
-
 <div class="modal fade" id="new" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -288,23 +245,32 @@ include('includes/global.php');
                     <h4 class="modal-title" id="myModalLabel">Add New User</h4>
                 </div>
                 <div class="modal-body">
-                    <!-- First Name Field -->
                     <div class="form-group">
-                        <label for="first_name">First Name</label>
-                        <input class="form-control" required placeholder="Enter First Name" name="first_name"
-                            type="text" autofocus>
+                        <label for="department">Department</label>
+                        <select class="form-control" name="department" required>
+                            <option value="">Select Department</option>
+                            <?php
+                            // Fetch departments from the database
+                            $query = "SELECT * FROM department"; // Adjust table name if needed
+                            $result = mysqli_query($connection, $query); // Adjust connection variable
+                            
+                            while ($row = mysqli_fetch_assoc($result)) {
+                                echo '<option value="' . $row['id'] . '">' . $row['name'] . '</option>';
+                            }
+                            ?>
+                        </select>
                     </div>
-
-                    <!-- Last Name Field -->
+                    <!-- Full Name Field -->
                     <div class="form-group">
-                        <label for="last_name">Last Name</label>
+                        <label for="last_name">Full Name</label>
                         <input class="form-control" required placeholder="Enter Last Name" name="last_name" type="text">
                     </div>
 
-                    <!-- Email Field -->
+                    <!-- User Name Field -->
                     <div class="form-group">
-                        <label for="email">Email</label>
-                        <input class="form-control" required placeholder="Enter Email" name="email" type="email">
+                        <label for="first_name">User Name</label>
+                        <input class="form-control" required placeholder="Enter First Name" name="first_name"
+                            type="text" autofocus>
                     </div>
 
                     <!-- Password Field -->
@@ -313,6 +279,9 @@ include('includes/global.php');
                         <input class="form-control" required placeholder="Enter Password" name="password"
                             type="password">
                     </div>
+
+                    <!-- Department Dropdown -->
+
                 </div>
                 <div class="modal-footer">
                     <button type="submit" name="submit" class="btn btn-success">
@@ -326,15 +295,26 @@ include('includes/global.php');
 </div>
 
 
+<!-- Include Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
 <script>
+    // Initialize Select2 on the department dropdown
+    $(document).ready(function () {
+        $('#department_filter').select2({
+            placeholder: 'Select Department',
+            allowClear: true // Allow clearing of the selection
+        });
 
-
-    $(function () {
-
-        $('.notification').tooltip({
-            selector: "[data-toggle=tooltip]",
-            container: "body"
-        })
-
+        function clearSearch() {
+            document.querySelector("input[name='search']").value = '';
+            document.querySelector('form').submit();
+        }
     });
 </script>
+
+<?php
+include('includes/footer.php');
+?>

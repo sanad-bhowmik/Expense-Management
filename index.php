@@ -65,15 +65,21 @@ if (isset($_GET['page']) && $_GET['page'] == 'Transaction') {
 } else if (isset($_GET['page']) && $_GET['page'] == 'Department') {
     $page = "Department";
 
-}else if (isset($_GET['page']) && $_GET['page'] == 'role') {
+} else if (isset($_GET['page']) && $_GET['page'] == 'role') {
     $page = "role";
 
 } else if (isset($_GET['page']) && $_GET['page'] == 'User') {
     $page = "User";
-
+} else if (isset($_GET['page']) && $_GET['page'] == 'addIncome') {
+    $page = "addIncome";
 } else if (isset($_GET['page']) && $_GET['page'] == 'Balance') {
     $page = "Balance";
 
+} else if (isset($_GET['page']) && $_GET['page'] == 'BalanceHistory') {
+    $page = "BalanceHistory";
+
+} else if (isset($_GET['page']) && $_GET['page'] == 'Ledger') {
+    $page = "Ledger";
 } else {
     $page = 'dashboard';
 }

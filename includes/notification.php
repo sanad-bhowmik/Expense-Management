@@ -158,10 +158,10 @@ $SuccessAccount = "Account has been created successfully, Please " . '<a href="l
 $AlreadyRegister = "Account already registered before, Please " . '<a href="login.php">Login!</a>';
 $SuccessAccountUpdate = "Account has been updated successfully.";
 $DeleteIncome = "Income has been deleted sucessfully.";
-$DeleteCategory = "Category has been deleted sucessfully.";
-$SaveMsgCategory = "Category has been saved sucessfully.";
+$DeleteCategory = "Expense has been deleted sucessfully.";
+$SaveMsgCategory = "Income has been saved sucessfully.";
 // $SaveMsgDepartment = "Department has been saved sucessfully.";
-$UpdateMsgCategory = "Category has been updated sucessfully";
+$UpdateMsgCategory = "Expense has been updated sucessfully";
 $DeleteAccount = "Account has been deleted sucessfully.";
 $SaveMsgAccount = "Account has been saved sucessfully.";
 $UpdateMsgAccount = "Account has been updated sucessfully";

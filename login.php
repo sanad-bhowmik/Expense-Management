@@ -10,27 +10,27 @@ include('includes/Functions.php');
 
 // User Login
 if (isset($_POST['login'])) {
-    if (empty($_POST['email'])) {
-        $msgBox = alertBox($EmailEmpty);
+    if (empty($_POST['first_name'])) {
+        $msgBox = alertBox($FirstNameEmpty);
     } elseif (empty($_POST['password'])) {
         $msgBox = alertBox($PasswordEmpty);
     } else {
         // Get User Info
-        $Email = $mysqli->real_escape_string($_POST['email']);
+        $FirstName = $mysqli->real_escape_string($_POST['first_name']);
         $Password = $mysqli->real_escape_string($_POST['password']);
 
-        // Query to check both tables
+        // Query to check both tables using FirstName and Password
         $query = "
             SELECT UserId, FirstName, LastName, Email, Password, Currency, 'user' AS user_type
             FROM user
-            WHERE Email = ? AND Password = ?
+            WHERE FirstName = ? AND Password = ?
             UNION
             SELECT UserId, FirstName, LastName, Email, Password, NULL AS Currency, 'department_user' AS user_type
             FROM department_user
-            WHERE Email = ? AND Password = ?";
+            WHERE FirstName = ? AND Password = ?";
 
         if ($stmt = $mysqli->prepare($query)) {
-            $stmt->bind_param("ssss", $Email, $Password, $Email, $Password);
+            $stmt->bind_param("ssss", $FirstName, $Password, $FirstName, $Password);
             $stmt->execute();
             $stmt->bind_result($UserId_, $FirstName_, $LastName_, $Email_, $Password_, $Currency_, $UserType_);
             $stmt->store_result();
@@ -78,7 +78,7 @@ if (isset($_POST['login'])) {
                 // Redirect to index.php
                 echo '<META HTTP-EQUIV="Refresh" Content="0; URL=index.php">';
             } else {
-                $msgBox = alertBox($LoginError); // Invalid email or password
+                $msgBox = alertBox($LoginError); // Invalid first name or password
             }
 
             $stmt->close();
@@ -129,7 +129,7 @@ if (isset($_POST['login'])) {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgb(0 0 0 / 71%); 
+            background: rgb(0 0 0 / 71%);
             z-index: 1;
         }
 
@@ -183,29 +183,29 @@ if (isset($_POST['login'])) {
                         <form method="post" action="" role="form">
                             <fieldset>
                                 <div class="form-group">
-                                    <label for="email"><?php echo $Emails; ?></label>
-                                    <input class="form-control" placeholder="<?php echo
-                                        $Emails; ?>" name="email" type="email" autofocus>
+                                    <label for="first_name">User Name</label>
+                                    <input class="form-control" placeholder="User Name" name="first_name" type="text"
+                                        autofocus>
                                 </div>
                                 <div class="form-group">
-                                    <label for="password"><?php echo $Passwords; ?></label>
-                                    <input class="form-control" placeholder="<?php echo
-                                        $Passwords; ?>" name="password" type="password" value="">
+                                    <label for="password">Password</label>
+                                    <input class="form-control" placeholder="Password" name="password" type="password"
+                                        value="">
                                 </div>
 
                                 <hr>
                                 <button type="submit" name="login" class="btn btn-success btn-block"><span
-                                        class="glyphicon glyphicon-log-in"></span> <?php echo
-                                            $SignIn; ?></button>
+                                        class="glyphicon glyphicon-log-in"></span> <?php echo $SignIn; ?></button>
                                 <hr>
                             </fieldset>
                         </form>
+
                     </div>
                 </div>
             </div>
         </div>
         <div class="row text-center footer-text">
-            <small>copyright © <?php echo Date('Y'); ?> Money Manager | All right Reserved</small><br>
+            <small>copyright © <?php echo Date('Y'); ?> TWILLON | All right Reserved</small><br>
             <small>Develop By PlayOn24</small>
         </div>
     </div>

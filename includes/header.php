@@ -112,45 +112,116 @@ include('includes/notification.php');
                             <a <?php ActiveClass("index"); ?> href="index.php"><i class="glyphicon glyphicon-home"></i>
                                 <?php echo $Dashboard; ?><span class="fa arrow"></a>
                         </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=role"); ?> href="index.php?page=role"><i
-                                    class="glyphicon glyphicon-send"></i> Role<span class="fa arrow"></a>
-                        </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=Department"); ?> href="index.php?page=Department"><i
-                                    class="glyphicon glyphicon-list-alt"></i> <?php echo $Department; ?><span
-                                    class="fa arrow"></a>
-                        </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=User"); ?> href="index.php?page=User">
-                                <i class="glyphicon glyphicon-user"></i>
-                                Users
-                                <span class="fa arrow">
-                            </a>
-                        </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=Balance"); ?> href="index.php?page=Balance">
-                                <i class="glyphicon glyphicon-qrcode"></i>
-                                User Balance
-                                <span class="fa arrow">
-                            </a>
-                        </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=Transaction"); ?> href="index.php?page=Transaction"><i
-                                    class="glyphicon glyphicon-refresh"></i> <?php echo $Transaction; ?><span
-                                    class="fa arrow"></a>
-                        </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=AssetReport"); ?> href="index.php?page=AssetReport"><i
-                                    class="glyphicon glyphicon-stats"></i> <?php echo $Incomes; ?><span
-                                    class="fa arrow"></span></a>
-                        </li>
-                        <li>
-                            <a <?php ActiveClass("index.php?page=ExpenseReport"); ?>
-                                href="index.php?page=ExpenseReport"><i class="glyphicon glyphicon-list-alt"></i>
-                                <?php echo $Expenses; ?><span class="fa arrow"></span></a>
-                        <li>
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=Department"); ?> href="index.php?page=Department"><i
+                                        class="glyphicon glyphicon-list-alt"></i> <?php echo $Department; ?><span
+                                        class="fa arrow"></a>
+                            </li>
+                        <?php } ?>
 
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=User"); ?> href="index.php?page=User">
+                                    <i class="glyphicon glyphicon-user"></i>
+                                    Users
+                                    <span class="fa arrow">
+                                </a>
+                            </li>
+                        <?php } ?>
+
+
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=Balance"); ?> href="index.php?page=Balance">
+                                    <i class="glyphicon glyphicon-qrcode"></i>
+                                    User Balance
+                                    <span class="fa arrow">
+                                </a>
+                            </li>
+                        <?php } ?>
+
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=BalanceHistory"); ?>
+                                    href="index.php?page=BalanceHistory">
+                                    <i class="glyphicon glyphicon-qrcode"></i>
+                                    User Balance History
+                                    <span class="fa arrow">
+                                </a>
+                            </li>
+                        <?php } ?>
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=Ledger"); ?> href="index.php?page=Ledger">
+                                    <i class="glyphicon glyphicon-zoom-in"></i>
+                                    Ledger
+                                    <span class="fa arrow">
+                                </a>
+                            </li>
+                        <?php } ?>
+
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] == !'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=Transaction"); ?> href="index.php?page=Transaction"><i
+                                        class="glyphicon glyphicon-floppy-open"></i> Add Expenses<span class="fa arrow"></a>
+                            </li>
+                        <?php } ?>
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=addIncome"); ?> href="index.php?page=addIncome"><i
+                                        class="glyphicon glyphicon-cloud-download"></i> Add Income<span
+                                        class="fa arrow"></a>
+                            </li>
+                        <?php } ?>
+
+                        <?php
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=AssetReport"); ?> href="index.php?page=AssetReport"><i
+                                        class="glyphicon glyphicon-stats"></i> <?php echo $Incomes; ?><span
+                                        class="fa arrow"></span></a>
+                            </li>
+                        <?php } ?>
+
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] == !'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=ExpenseReport"); ?>
+                                    href="index.php?page=ExpenseReport"><i class="glyphicon glyphicon-list-alt"></i>
+                                    <?php echo $Expenses; ?><span class="fa arrow"></span></a>
+                            <li>
+                            <?php } ?>
                             <!-- <li>
                             <a <?php ActiveClass("index.php?page=ManageAccount"); ?>
                                 href="index.php?page=ManageAccount">
@@ -168,23 +239,28 @@ include('includes/notification.php');
                                 <?php echo $BudgetsM; ?><span class="fa arrow"></a>
                         </li> -->
 
-                        <li>
-                            <a class="parent" href="javascript:void(0)"><i class="fa fa-gears"> </i>
-                                <?php echo $Settings; ?><span class="fa arrow"></a>
-                            <ul class="nav nav-second-level" id="subitem">
-                                <li>
-                                    <a <?php ActiveClass("index.php?page=ManageExpenseCategory"); ?>
-                                        href="index.php?page=ManageExpenseCategory"><i class="fa fa-caret-right"></i>
-                                        Add Expense Head</a>
-                                </li>
-                                <li>
-                                    <a <?php ActiveClass("index.php?page=ManageIncomeCategory"); ?>
-                                        href="index.php?page=ManageIncomeCategory"><i class="fa fa-caret-right"></i>
-                                        Add Income Head</a>
-                                </li>
+                        <?php
+                        if ($ColUser['LastName'] === 'admin') {
+                            ?>
+                            <li>
+                                <a class="parent" href="javascript:void(0)"><i class="fa fa-gears"> </i>
+                                    <?php echo $Settings; ?><span class="fa arrow"></a>
+                                <ul class="nav nav-second-level" id="subitem">
+                                    <li>
+                                        <a <?php ActiveClass("index.php?page=ManageExpenseCategory"); ?>
+                                            href="index.php?page=ManageExpenseCategory"><i class="fa fa-caret-right"></i>
+                                            Add Expense Head</a>
+                                    </li>
+                                    <li>
+                                        <a <?php ActiveClass("index.php?page=ManageIncomeCategory"); ?>
+                                            href="index.php?page=ManageIncomeCategory"><i class="fa fa-caret-right"></i>
+                                            Add Income Head</a>
+                                    </li>
 
-                            </ul>
-                        </li>
+                                </ul>
+                            </li>
+                        <?php } ?>
+
 
                         <!-- <li>
                             <a class="parent" href="javascript:void(0)"><i class="fa fa-print"> </i>
