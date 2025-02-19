@@ -65,7 +65,7 @@ if (isset($_POST['edit'])) {
     }
 }
 
-// Add new user
+// Add new user balance logic
 if (isset($_POST['submit'])) {
     $user_id = (int) $_POST["user_id"];
     $balance = $mysqli->real_escape_string($_POST["balance"]);
@@ -83,45 +83,46 @@ if (isset($_POST['submit'])) {
         $stmt->close();
 
         if ($existing_balance !== null) {
+            // Calculate new balance by adding the new balance to the existing balance
             $new_balance = $existing_balance + $balance;
 
+            // Update balance in the user_balance table
             $updateQuery = "UPDATE user_balance SET balance = ?, date = ?, updated_at = NOW() WHERE user_id = ?";
             if ($stmt = $mysqli->prepare($updateQuery)) {
                 $stmt->bind_param('dsi', $new_balance, $date, $user_id);
 
                 if ($stmt->execute()) {
+                    // Insert the entered balance (not the total sum) into the history table
                     $historyInsertQuery = "INSERT INTO user_balance_history (user_id, balance, add_by, status, date, created_at, updated_at)
                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
                     if ($historyStmt = $mysqli->prepare($historyInsertQuery)) {
-                        $historyStmt->bind_param('idiss', $user_id, $new_balance, $add_by, $status, $date);
+                        $historyStmt->bind_param('idiss', $user_id, $balance, $add_by, $status, $date);
 
                         if ($historyStmt->execute()) {
                             $msgBox = alertBox("Balance has been updated successfully!");
                         } else {
-                            var_dump($historyStmt->error);
                             $msgBox = alertBox("Error: Unable to insert into user_balance_history. " . $historyStmt->error, "error");
                         }
                         $historyStmt->close();
                     } else {
-                        var_dump($mysqli->error);
                         $msgBox = alertBox("Error: Unable to prepare user_balance_history insert query. " . $mysqli->error, "error");
                     }
                 } else {
-                    var_dump($stmt->error);
                     $msgBox = alertBox("Error: Unable to update balance. " . $stmt->error, "error");
                 }
                 $stmt->close();
             } else {
-                var_dump($mysqli->error);
                 $msgBox = alertBox("Error: Unable to prepare update SQL query. " . $mysqli->error, "error");
             }
         } else {
+            // If no existing balance, insert the new balance directly into user_balance
             $insertQuery = "INSERT INTO user_balance (balance, user_id, date, status, created_at, updated_at)
                             VALUES (?, ?, ?, ?, NOW(), NOW())";
             if ($stmt = $mysqli->prepare($insertQuery)) {
                 $stmt->bind_param('diss', $balance, $user_id, $date, $status);
 
                 if ($stmt->execute()) {
+                    // Insert the entered balance (not the total sum) into the history table
                     $historyInsertQuery = "INSERT INTO user_balance_history (user_id, balance, add_by, status, date, created_at, updated_at)
                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
                     if ($historyStmt = $mysqli->prepare($historyInsertQuery)) {
@@ -130,43 +131,56 @@ if (isset($_POST['submit'])) {
                         if ($historyStmt->execute()) {
                             $msgBox = alertBox("Balance has been added successfully!");
                         } else {
-                            var_dump($historyStmt->error);
                             $msgBox = alertBox("Error: Unable to insert into user_balance_history. " . $historyStmt->error, "error");
                         }
                         $historyStmt->close();
                     } else {
-                        var_dump($mysqli->error);
                         $msgBox = alertBox("Error: Unable to prepare user_balance_history insert query. " . $mysqli->error, "error");
                     }
                 } else {
-                    var_dump($stmt->error);
                     $msgBox = alertBox("Error: Unable to add balance. " . $stmt->error, "error");
                 }
                 $stmt->close();
             } else {
-                var_dump($mysqli->error);
                 $msgBox = alertBox("Error: Unable to prepare insert SQL query. " . $mysqli->error, "error");
             }
         }
     } else {
-        var_dump($mysqli->error);
         $msgBox = alertBox("Error: Unable to check existing balance. " . $mysqli->error, "error");
     }
 }
 
-// Get list of users
-$GetUserList = "SELECT ub.id, ub.balance, ub.date, du.FirstName, du.LastName, du.Email 
+
+// Get list of departments for the department dropdown
+$GetDepartments = "SELECT id, name FROM department ORDER BY name ASC";
+$DepartmentsResult = mysqli_query($mysqli, $GetDepartments);
+
+// Get list of users (for the user dropdown)
+$GetUsersQuery = "SELECT du.UserId, du.FirstName, du.LastName FROM department_user du ORDER BY du.FirstName ASC";
+$UsersResult = mysqli_query($mysqli, $GetUsersQuery);
+
+// Get list of user balances
+$GetUserList = "SELECT ub.id, ub.balance, ub.date, du.UserId, du.FirstName, du.LastName, du.Email, du.department_id, d.name AS department_name
                 FROM user_balance ub
                 JOIN department_user du ON ub.user_id = du.UserId
+                JOIN department d ON du.department_id = d.id
                 ORDER BY du.FirstName ASC";
 $GetUsers = mysqli_query($mysqli, $GetUserList);
 
-// Search
+// Search query initialization
 $searchQuery = ""; // Default query condition
 
 if (isset($_POST['searchbtn'])) {
-    $SearchTerm = $mysqli->real_escape_string($_POST['search']); // Prevent SQL injection
-    $searchQuery = " WHERE name LIKE '%$SearchTerm%' ";
+    $SearchUser = $mysqli->real_escape_string($_POST['filterUser']);
+    $SearchDepartment = $mysqli->real_escape_string($_POST['filterDepartment']);
+
+    // Add user and department filtering conditions
+    if ($SearchUser) {
+        $searchQuery .= " AND du.UserId = '$SearchUser'";
+    }
+    if ($SearchDepartment) {
+        $searchQuery .= " AND du.department_id = '$SearchDepartment'";
+    }
 }
 
 // Include Global page
@@ -196,41 +210,51 @@ include('includes/global.php');
                 <div class="panel-body">
                     <div class="d-flex justify-content-end mb-3" style="display: flex;margin-bottom: 5vh;gap:10px;">
                         <div class="mr-2">
-                            <label for="filterName" class="form-label">Search by Name</label>
-                            <input type="text" id="filterName" class="form-control" placeholder="Search by Name" />
+                            <label for="filterUser" class="form-label">Search by User</label>
+                            <select id="filterUser" class="form-control">
+                                <option value="">Select User</option>
+                                <?php while ($user = mysqli_fetch_assoc($UsersResult)) { ?>
+                                    <option value="<?php echo $user['UserId']; ?>">
+                                        <?php echo $user['FirstName'] . ' ' . $user['LastName']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
                         </div>
                         <div class="mr-2">
-                            <label for="fromDate" class="form-label">From Date</label>
-                            <input type="date" id="fromDate" class="form-control" />
-                        </div>
-                        <div class="mr-2">
-                            <label for="toDate" class="form-label">To Date</label>
-                            <input type="date" id="toDate" class="form-control" />
+                            <label for="filterDepartment" class="form-label">Filter by Department</label>
+                            <select id="filterDepartment" class="form-control">
+                                <option value="">Select Department</option>
+                                <?php while ($department = mysqli_fetch_assoc($DepartmentsResult)) { ?>
+                                    <option value="<?php echo $department['id']; ?>">
+                                        <?php echo $department['name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
                         </div>
                         <div style="margin-top: 26px;">
                             <button class="btn btn-primary" id="filterBtn" name="searchbtn" type="submit">
                                 <i class="fa fa-search"></i>
                             </button>
-                            <button id="clearBtn" class="btn btn-danger ml-2" style=""><i
-                                    class="fa fa-times"></i></button>
+                            <button id="clearBtn" class="btn btn-danger ml-2"><i class="fa fa-times"></i></button>
                         </div>
                     </div>
-
 
                     <table class="table table-striped table-bordered table-hover" id="assetsdata">
                         <thead>
                             <tr>
                                 <th class="text-left">User Name</th>
                                 <th class="text-left">Balance</th>
-                                <th class="text-left">Date</th>
+                                <th class="text-left">Department</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php while ($col = mysqli_fetch_assoc($GetUsers)) { ?>
-                                <tr data-date="<?php echo $col['date']; ?>">
+                                <tr data-user-id="<?php echo $col['UserId']; ?>"
+                                    data-department-id="<?php echo $col['department_id']; ?>"
+                                    data-date="<?php echo $col['date']; ?>">
                                     <td><?php echo $col['FirstName'] . ' ' . $col['LastName']; ?></td>
-                                    <td><?php echo number_format($col['balance'], 2); ?></td>
-                                    <td><?php echo $col['date']; ?></td>
+                                    <td><?php echo number_format($col['balance'], 2); ?> Tk</td>
+                                    <td><?php echo $col['department_name']; ?></td>
                                 </tr>
                             <?php } ?>
                         </tbody>
@@ -239,32 +263,18 @@ include('includes/global.php');
 
                 <script>
                     document.getElementById("filterBtn").addEventListener("click", function () {
-                        const filterName = document.getElementById("filterName").value.toLowerCase();
-                        const fromDate = document.getElementById("fromDate").value;
-                        const toDate = document.getElementById("toDate").value;
-
+                        const filterUser = document.getElementById("filterUser").value;
+                        const filterDepartment = document.getElementById("filterDepartment").value;
                         const rows = document.querySelectorAll("#assetsdata tbody tr");
 
                         rows.forEach(row => {
-                            const rowDate = row.getAttribute("data-date");
+                            const rowUserId = row.getAttribute("data-user-id");
+                            const rowDepartmentId = row.getAttribute("data-department-id");
 
-                            // Filtering by name
-                            const rowName = row.cells[0].innerText.toLowerCase();
-                            const isNameMatch = rowName.includes(filterName);
+                            const isUserMatch = filterUser ? rowUserId === filterUser : true;
+                            const isDepartmentMatch = filterDepartment ? rowDepartmentId === filterDepartment : true;
 
-                            // Filtering by date range
-                            let isDateMatch = true;
-
-                            if (fromDate && rowDate < fromDate) {
-                                isDateMatch = false;
-                            }
-
-                            if (toDate && rowDate > toDate) {
-                                isDateMatch = false;
-                            }
-
-                            // Show row if both name and date match
-                            if (isNameMatch && isDateMatch) {
+                            if (isUserMatch && isDepartmentMatch) {
                                 row.style.display = "";
                             } else {
                                 row.style.display = "none";
@@ -273,22 +283,20 @@ include('includes/global.php');
                     });
 
                     document.getElementById("clearBtn").addEventListener("click", function () {
-                        document.getElementById("filterName").value = "";
-                        document.getElementById("fromDate").value = "";
-                        document.getElementById("toDate").value = "";
-
+                        document.getElementById("filterUser").value = "";
+                        document.getElementById("filterDepartment").value = "";
                         const rows = document.querySelectorAll("#assetsdata tbody tr");
                         rows.forEach(row => {
                             row.style.display = "";
                         });
                     });
-
                 </script>
             </div>
+
         </div>
     </div>
-</div>
 
+</div>
 <!-- Modal Add Balance -->
 <div class="modal fade" id="new" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -299,13 +307,12 @@ include('includes/global.php');
                     <h4 class="modal-title" id="myModalLabel">Add User Balance</h4>
                 </div>
                 <div class="modal-body">
+                    <!-- Inside the modal-body section of your modal -->
                     <div class="form-group">
                         <label for="user_id">Select User</label>
                         <select class="form-control" name="user_id" id="user_id">
-                            <!-- PHP logic to fetch users dynamically -->
                             <?php
-                            // Query to fetch user details
-                            $userListQuery = "SELECT UserId, CONCAT( LastName) AS FullName FROM department_user";
+                            $userListQuery = "SELECT UserId, CONCAT(LastName) AS FullName FROM department_user";
                             $userListResult = mysqli_query($mysqli, $userListQuery);
 
                             while ($user = mysqli_fetch_assoc($userListResult)) {
@@ -314,6 +321,11 @@ include('includes/global.php');
                             ?>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <span id="user_balance" class="form-control-static"
+                            style="color: midnightblue;font-weight: 800;font-family: math;"></span>
+                    </div>
+
                     <div class="form-group">
                         <label for="balance">Balance</label>
                         <input type="number" name="balance" id="balance" class="form-control"
@@ -347,15 +359,32 @@ include('includes/global.php');
                     url: 'pages/get_user_balance.php',  // Adjust the path to include the 'pages' folder
                     type: 'POST',
                     data: { user_id: userId },
+                    dataType: 'json',  // Expecting JSON response
                     success: function (response) {
-                        $('#user_balance').text('Current Balance: ' + response);
+                        if (response.balance && response.department) {
+                            // Remove any unwanted characters from balance like quotes or commas
+                            var cleanedBalance = response.balance.replace(/['"]+/g, '').replace(/,/g, '');
+
+                            // Display balance and department separately
+                            $('#user_balance').text('Current Balance: ' + cleanedBalance);
+                            $('#user_department').text('Department: ' + response.department);
+                        } else {
+                            $('#user_balance').text('No balance found for this user.');
+                            $('#user_department').text('No department found.');
+                        }
+                    },
+                    error: function () {
+                        $('#user_balance').text('Error fetching data.');
+                        $('#user_department').text('');
                     }
                 });
             } else {
                 $('#user_balance').text('');
+                $('#user_department').text('');
             }
         });
     });
+
 
     $(document).ready(function () {
         // Initialize the date picker
@@ -379,4 +408,27 @@ include('includes/global.php');
         })
 
     });
+    $(document).ready(function () {
+        $('#user_id').change(function () {
+            var userId = $(this).val();
+
+            if (userId) {
+                $.ajax({
+                    url: 'pages/get_u_balance.php',  // Adjust the path if needed
+                    type: 'POST',
+                    data: { user_id: userId },
+                    success: function (response) {
+                        // Assuming response contains the balance in the format: "Balance: 5000 Tk"
+                        $('#user_balance').text(response);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error fetching balance: " + error);
+                    }
+                });
+            } else {
+                $('#user_balance').text(''); // Clear balance if no user is selected
+            }
+        });
+    });
+
 </script>

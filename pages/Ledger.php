@@ -49,7 +49,9 @@ $GetIncomeHistory = "
         ledger.level, 
         ledger.created_at,
         ledger.updated_at,
-        department_user.LastName,
+        ledger.InBalance,
+        ledger.OutBalance,
+        department_user.FirstName,
         category.CategoryName
     FROM ledger
     LEFT JOIN department_user ON ledger.user_id = department_user.UserId
@@ -59,6 +61,33 @@ $GetIncomeHistory = "
 ";
 
 $IncomeHistory = mysqli_query($mysqli, $GetIncomeHistory);
+
+// Calculate Opening Balance (before the from_date)
+$openingBalance = 0;
+
+if (!empty($fromDate)) {
+    $openingBalanceQuery = "
+        SELECT 
+            IFNULL(SUM(InBalance), 0) AS total_inbalance,
+            IFNULL(SUM(OutBalance), 0) AS total_outbalance
+        FROM ledger
+        WHERE created_at < '$fromDate'
+    ";
+
+    $openingBalanceResult = mysqli_query($mysqli, $openingBalanceQuery);
+    $openingBalanceRow = mysqli_fetch_assoc($openingBalanceResult);
+
+    $openingBalance = $openingBalanceRow['total_inbalance'] - $openingBalanceRow['total_outbalance'];
+}
+
+// Calculate Closing Balance (within the filtered date range)
+$closingBalance = $openingBalance;
+while ($col = mysqli_fetch_assoc($IncomeHistory)) {
+    $closingBalance += $col['InBalance'] - $col['OutBalance'];
+}
+
+// Reset the pointer of the result set to the beginning
+mysqli_data_seek($IncomeHistory, 0);
 
 include('includes/global.php');
 ?>
@@ -92,44 +121,6 @@ include('includes/global.php');
                                     value="<?php echo !empty($toDate) ? $toDate : date('Y-m-d'); ?>">
                             </div>
 
-
-                            <div class="d-flex flex-column">
-                                <label for="last_name" class="fw-bold">Name</label>
-                                <select name="last_name" id="last_name" class="form-control">
-                                    <option value="">Select Name</option>
-                                    <?php
-                                    // Fetch all users from department_user table
-                                    $userQuery = "SELECT UserId, FirstName, LastName FROM department_user";
-                                    $userResult = mysqli_query($mysqli, $userQuery);
-
-                                    // Loop through the results and populate the dropdown
-                                    while ($user = mysqli_fetch_assoc($userResult)) {
-                                        $selected = ($user['UserId'] == $lastName) ? 'selected' : '';
-                                        echo "<option value='{$user['UserId']}' {$selected}>{$user['FirstName']}</option>";
-                                    }
-                                    ?>
-                                </select>
-                            </div>
-
-
-                            <div class="d-flex flex-column">
-                                <label for="type" class="fw-bold">Type</label>
-                                <select name="type" id="type" class="form-control">
-                                    <option value="">Select Type</option>
-                                    <?php
-                                    // Fetch distinct 'type' values from the ledger table
-                                    $typeQuery = "SELECT DISTINCT type FROM ledger";
-                                    $typeResult = mysqli_query($mysqli, $typeQuery);
-
-                                    while ($typeRow = mysqli_fetch_assoc($typeResult)) {
-                                        $selected = ($typeRow['type'] == $type) ? 'selected' : '';
-                                        // Displaying the type exactly as stored in the database
-                                        echo "<option value='{$typeRow['type']}' {$selected}>{$typeRow['type']}</option>";
-                                    }
-                                    ?>
-                                </select>
-                            </div>
-
                             <div class="d-flex align-items-end">
                                 <button class="btn btn-primary" name="searchbtn" type="submit"
                                     style="margin-top: 26px;">
@@ -142,6 +133,9 @@ include('includes/global.php');
                             </div>
                         </div>
                     </form>
+
+                    <!-- Display Opening Balance -->
+                    <p><strong>Opening Balance:</strong> <?php echo number_format($openingBalance, 2); ?> Tk</p>
 
                     <table class="table table-bordered table-hover table-striped">
                         <thead>
@@ -157,16 +151,19 @@ include('includes/global.php');
                         <tbody>
                             <?php while ($col = mysqli_fetch_assoc($IncomeHistory)) { ?>
                                 <tr>
-                                    <td><?php echo $col['LastName']; ?></td>
+                                    <td><?php echo $col['FirstName']; ?></td>
                                     <td><?php echo $col['CategoryName']; ?></td>
                                     <td><?php echo $col['type']; ?></td>
-                                    <td><?php echo number_format($col['amount']); ?> Tk</td>
-                                    <td><?php echo number_format($col['total']); ?> Tk</td>
+                                    <td><?php echo number_format($col['amount'], 2); ?> Tk</td>
+                                    <td><?php echo number_format($col['total'], 2); ?> Tk</td>
                                     <td><?php echo date("M d Y", strtotime($col['created_at'])); ?></td>
                                 </tr>
                             <?php } ?>
                         </tbody>
                     </table>
+
+                    <!-- Display Closing Balance -->
+                    <p><strong>Closing Balance:</strong> <?php echo number_format($closingBalance, 2); ?> Tk</p>
                 </div>
             </div>
         </div>

@@ -74,7 +74,37 @@ if (isset($_POST['edit'])) {
         $msgBox = alertBox("Error: Unable to prepare SQL query.", "error");
     }
 }
+// Handle user edit form submission
+if (isset($_POST['edit_user'])) {
+    $UserId = (int) $_POST['edit_user_id'];
+    $UserName = mysqli_real_escape_string($connection, $_POST['edit_user_name']);
+    $FullName = mysqli_real_escape_string($connection, $_POST['edit_full_name']);
+    $Password = mysqli_real_escape_string($connection, $_POST['edit_password']);
+    $Status = (int) $_POST['edit_status'];  // Get the status value from the form
 
+    // Check if a new password is provided
+    if (!empty($Password)) {
+        $sql = "UPDATE department_user SET FirstName=?, Password=?, LastName=?, status=? WHERE UserId=?";
+        if ($stmt = mysqli_prepare($connection, $sql)) {
+            mysqli_stmt_bind_param($stmt, "sssii", $UserName, $Password, $FullName, $Status, $UserId);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+            $msgBox = alertBox("User updated successfully!");
+        } else {
+            $msgBox = alertBox("Error: Unable to prepare SQL query.", "error");
+        }
+    } else {
+        $sql = "UPDATE department_user SET FirstName=?, LastName=?, status=? WHERE UserId=?";
+        if ($stmt = mysqli_prepare($connection, $sql)) {
+            mysqli_stmt_bind_param($stmt, "ssii", $UserName, $FullName, $Status, $UserId);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+            $msgBox = alertBox("User updated successfully!");
+        } else {
+            $msgBox = alertBox("Error: Unable to prepare SQL query.", "error");
+        }
+    }
+}
 // Add new user
 if (isset($_POST['submit'])) {
     // Sanitize and get form data
@@ -132,7 +162,7 @@ if (isset($_POST['searchbtn'])) {
 }
 
 $GetUserListWithSearch = "
-    SELECT du.UserId, du.FirstName, du.LastName, du.Email, du.Password, d.name AS DepartmentName 
+    SELECT du.UserId, du.FirstName, du.LastName, du.Email, du.Password,du.status ,d.name AS DepartmentName 
     FROM department_user du
     LEFT JOIN department d ON du.department_id = d.id
     " . $searchQuery . " 
@@ -183,9 +213,9 @@ include('includes/global.php');
                                 </select>
 
                                 <!-- Search Input -->
-                                <input type="text" name="search" placeholder="Search by Name" class="form-control"
+                                <!-- <input type="text" name="search" placeholder="Search by Name" class="form-control"
                                     value="<?php echo isset($_POST['search']) ? $_POST['search'] : ''; ?>"
-                                    style="margin-right: 10px;">
+                                    style="margin-right: 10px;"> -->
 
                                 <span class="input-group-btn" style="display: flex; align-items: center;">
                                     <!-- Search Button -->
@@ -216,6 +246,8 @@ include('includes/global.php');
                                     <th class="text-left">Password</th>
                                     <th class="text-left">Full Name</th>
                                     <th class="text-left">Department</th>
+                                    <th class="text-left">Status</th> <!-- New column for status -->
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -226,16 +258,76 @@ include('includes/global.php');
                                         <td><?php echo $col['Password']; ?></td>
                                         <td><?php echo $col['LastName']; ?></td>
                                         <td><?php echo $col['DepartmentName']; ?></td>
+
+                                        <!-- Status Column with conditional badge -->
+                                        <td>
+                                            <?php if ($col['status'] == 1) { ?>
+                                                <span style="background-color: green; color: white; padding: 5px;border-radius: 10px;">Active</span>
+                                            <?php } else { ?>
+                                                <span style="background-color: red; color: white; padding: 5px;border-radius: 10px;">Inactive</span>
+                                            <?php } ?>
+                                        </td>
+
+                                        <!-- Edit Button -->
+                                        <td>
+                                            <button class="btn btn-warning" data-toggle="modal" data-target="#editModal"
+                                                onclick="editUser('<?php echo $col['UserId']; ?>', '<?php echo htmlspecialchars($col['FirstName']); ?>', '<?php echo htmlspecialchars($col['LastName']); ?>', '<?php echo $col['status']; ?>')">
+                                                Edit
+                                            </button>
+                                        </td>
                                     </tr>
-                                </tbody>
-                            <?php } ?>
+                                <?php } ?>
+                            </tbody>
                         </table>
+
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<!-- Edit User Modal -->
+<!-- Edit User Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="" method="post">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Edit User</h4>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="edit_user_id" id="edit_user_id">
+                    <div class="form-group">
+                        <label>User Name</label>
+                        <input type="text" class="form-control" name="edit_user_name" id="edit_user_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" class="form-control" name="edit_password" id="edit_password">
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" class="form-control" name="edit_full_name" id="edit_full_name" required>
+                    </div>
+                    <!-- Status Dropdown -->
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select class="form-control" name="edit_user_status" id="edit_user_status" required>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" name="edit_user" class="btn btn-success">Save Changes</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="new" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -313,7 +405,15 @@ include('includes/global.php');
             document.querySelector('form').submit();
         }
     });
+
+    function editUser(id, username, fullname) {
+        document.getElementById('edit_user_id').value = id;
+        document.getElementById('edit_user_name').value = username;
+        document.getElementById('edit_full_name').value = fullname;
+        document.getElementById('edit_user_status').value = status;
+    }
 </script>
+
 
 <?php
 include('includes/footer.php');

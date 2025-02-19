@@ -6,249 +6,230 @@ include('includes/Functions.php');
 // Include Notifications
 include('includes/notification.php');
 
-// Delete category
-if (isset($_POST['submitin'])) {
-    $CategoryIds = $_POST['categoryid'];
-    $Delete = "DELETE FROM category WHERE CategoryId = $CategoryIds";
-    $DeleteI = mysqli_query($mysqli, $Delete);
+// Fetch departments for the dropdown
+$departmentQuery = "SELECT id, name FROM department";
+$departmentResult = mysqli_query($mysqli, $departmentQuery);
 
-    $msgBox = alertBox($DeleteCategory);
+// Fetch all categories for the dropdown
+$categoryQuery = "SELECT CategoryId, CategoryName FROM category";
+$categoryResult = mysqli_query($mysqli, $categoryQuery);
+
+// Prepare filter values
+$searchTerm = isset($_POST['search']) ? $_POST['search'] : '';
+$departmentId = isset($_POST['department_id']) ? $_POST['department_id'] : '';
+$categoryId = isset($_POST['category_id']) ? $_POST['category_id'] : ''; // For filtering by category
+
+// Build the SQL query with filters
+$whereClauses = ["category.Level = 2", "category.UserId = $UserId"];
+
+if (!empty($searchTerm)) {
+    $whereClauses[] = "category.CategoryName LIKE '%$searchTerm%'";
 }
 
-// Edit Category
-if (isset($_POST['edit'])) {
-    $CategoryIds = $_POST['categoryid'];
-    $CategoryName = $_POST['categoryedit'];
-
-    $sql = "UPDATE category SET CategoryName = ? WHERE CategoryId = $CategoryIds";
-    if ($statement = $mysqli->prepare($sql)) {
-        // Bind parameters for markers, where (s = string, i = integer, d = double, b = blob)
-        $statement->bind_param('s', $CategoryName);
-        $statement->execute();
-    }
-    $msgBox = alertBox($UpdateMsgCategory);
+if (!empty($departmentId)) {
+    $whereClauses[] = "category.department_id = '$departmentId'";
 }
 
-// Add new category
-if (isset($_POST['submit'])) {
-
-    // Sanitize inputs
-    $category = $mysqli->real_escape_string($_POST["category"]);
-    $department_id = $_POST['department_id'];  // Get the department_id
-    $level = 2;
-
-    // Check if department_id is selected
-    if (empty($department_id)) {
-        $msgBox = alertBox("Please select a department.");
-    } else {
-        // Add new category with department_id
-        $sql = "INSERT INTO category (UserId, CategoryName, Level, department_id) VALUES (?,?,?,?)";
-        if ($statement = $mysqli->prepare($sql)) {
-            // Bind parameters for markers, where (s = string, i = integer)
-            $statement->bind_param('isii', $UserId, $category, $level, $department_id);
-            $statement->execute();
-        }
-        $msgBox = alertBox($SaveMsgCategory);
-    }
+if (!empty($categoryId)) {
+    $whereClauses[] = "category.CategoryId = '$categoryId'"; // Filter by selected category
 }
 
-// Get list of categories
+$whereSql = count($whereClauses) > 0 ? "WHERE " . implode(' AND ', $whereClauses) : "";
+
+// Get list of filtered categories
 $GetList = "
     SELECT category.CategoryId, category.CategoryName, department.name AS DepartmentName
     FROM category
     LEFT JOIN department ON category.department_id = department.id
-    WHERE category.Level = 2 AND category.UserId = $UserId
+    $whereSql
     ORDER BY category.CategoryName ASC
 ";
 $GetListCategory = mysqli_query($mysqli, $GetList);
 
-
-// Search category
-if (isset($_POST['searchbtn'])) {
-    $SearchTerm = $_POST['search'];
-    $GetList = "SELECT CategoryId, CategoryName FROM category WHERE Level = 2 AND UserId = $UserId  AND CategoryName
-                like '%$SearchTerm%' ORDER BY CategoryName ASC";
-    $GetListCategory = mysqli_query($mysqli, $GetList);
-}
-
-// Get departments from the database
-$departmentQuery = "SELECT id, name FROM department"; // Assuming the table is named 'departments' and it has 'id' and 'name' columns
-$departmentResult = mysqli_query($mysqli, $departmentQuery);
-
 // Include Global page
 include('includes/global.php');
+
+// Handle category edit update
+if (isset($_POST['edit'])) {
+    $CategoryIds = $_POST['categoryid'];
+    $CategoryName = $_POST['categoryedit'];
+
+    $sql = "UPDATE category SET CategoryName = ? WHERE CategoryId = ?";
+    if ($statement = $mysqli->prepare($sql)) {
+        $statement->bind_param('si', $CategoryName, $CategoryIds);
+        if ($statement->execute()) {
+            $msgBox = "<div class='alert alert-success'>Head updated successfully.</div>";
+            echo "<script type='text/javascript'>
+                    window.location.href = 'http://36.50.40.147:9099/Twillon/index.php?page=ManageExpenseCategory';
+                  </script>";
+        } else {
+            $msgBox = "<div class='alert alert-danger'>Error updating category.</div>";
+        }
+        $statement->close();
+    }
+}
+
 ?>
 
 <div id="page-wrapper">
     <div class="row">
         <div class="col-lg-12">
-            <h1 class="page-header">Expense Head </h1>
+            <h1 class="page-header">Expense Head</h1>
         </div>
-        <!-- /.col-lg-12 -->
     </div>
-    <!-- /.row -->
-    <?php if ($msgBox) {
-        echo $msgBox;
-    } ?>
-    <a href="#new" class="btn white btn-success" data-toggle="modal"><i class="fa fa-plus"></i>
-        Add Expense Head</a>
+
+    <?php if (isset($msgBox))
+        echo $msgBox; ?>
+
+    <a href="#new" class="btn btn-success" data-toggle="modal"><i class="fa fa-plus"></i> Add Expense Head</a>
+
     <div class="row">
         <div class="col-lg-12">
             <div class="panel panel-red">
                 <div class="panel-heading">
-                    <i class="fa fa-bar-chart-o fa-fw"></i> List of Expense
+                    <i class="fa fa-bar-chart-o fa-fw"></i> List of Expense Heads
                 </div>
                 <div class="panel-body">
-                    <div class="pull-right">
-                        <form action="" method="post">
-                            <div class="form-group input-group col-lg-5 pull-right">
-                                <input type="text" name="search" placeholder="<?php echo $Search; ?>"
-                                    class="form-control">
-                                <span class="input-group-btn">
-                                    <button class="btn btn-primary" name="searchbtn" type="input"><i
-                                            class="fa fa-search"></i></button>
-                                </span>
+
+                    <!-- Search & Filter Form -->
+                    <form action="" method="post" style="margin-bottom: 24px;">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="department_id">Filter by Department:</label>
+                                <select class="form-control" name="department_id" onchange="this.form.submit();">
+                                    <option value="">All Departments</option>
+                                    <?php
+                                    $departmentResult = mysqli_query($mysqli, $departmentQuery);
+                                    while ($row = mysqli_fetch_assoc($departmentResult)) { ?>
+                                        <option value="<?php echo $row['id']; ?>" <?php echo ($departmentId == $row['id']) ? 'selected' : ''; ?>>
+                                            <?php echo $row['name']; ?>
+                                        </option>
+                                    <?php } ?>
+                                </select>
                             </div>
-                        </form>
-                    </div>
-                    <div class="">
-                        <table class="table table-striped table-bordered table-hover" id="assetsdata">
-                            <thead>
+
+                            <div class="col-md-4">
+                                <label for="category_id">Filter by Category:</label>
+                                <select class="form-control" name="category_id" onchange="this.form.submit();">
+                                    <option value="">Select Category</option>
+                                    <?php
+                                    while ($row = mysqli_fetch_assoc($categoryResult)) { ?>
+                                        <option value="<?php echo $row['CategoryId']; ?>" <?php echo ($categoryId == $row['CategoryId']) ? 'selected' : ''; ?>>
+                                            <?php echo $row['CategoryName']; ?>
+                                        </option>
+                                    <?php } ?>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-btn">
+
+                                        <button id="clearBtn" class="btn btn-danger ml-2" type="button"
+                                            onclick="clearFilters()" style="margin-top: 25px;margin-left: -20px;">
+                                            <i class="fa fa-times"></i>
+                                        </button>
+
+                                        <script>
+                                            function clearFilters() {
+                                                window.location.href = "http://36.50.40.147:9099/Twillon/index.php?page=ManageExpenseCategory";
+                                            }
+                                        </script>
+
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <table class="table table-striped table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Head</th>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($col = mysqli_fetch_assoc($GetListCategory)) { ?>
                                 <tr>
-                                    <th class="text-left"><?php echo $Category; ?></th>
-                                    <th class="text-left"><?php echo $Department; ?></th>
-                                    <!-- Added column for Department -->
-                                    <th class="text-left"><?php echo $Action; ?></th>
+                                    <td><?php echo $col['CategoryName']; ?></td>
+                                    <td><?php echo $col['DepartmentName']; ?></td>
+                                    <td>
+                                        <a href="#EditCat<?php echo $col['CategoryId']; ?>" data-toggle="modal">
+                                            <button class="btn btn-primary btn-xs"><i class="fa fa-edit"></i></button>
+                                        </a>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($col = mysqli_fetch_assoc($GetListCategory)) { ?>
-                                    <tr>
-                                        <td><?php echo $col['CategoryName']; ?></td>
-                                        <td><?php echo $col['DepartmentName']; ?></td> <!-- Displaying department name -->
-                                        <td colspan="2" class="notification">
-                                            <a href="#EditCat<?php echo $col['CategoryId']; ?>" data-toggle="modal">
-                                                <span class="btn btn-primary btn-xs glyphicon glyphicon-edit"
-                                                    data-toggle="tooltip" data-placement="left" title=""
-                                                    data-original-title="<?php echo $EditCategory; ?>"></span>
-                                            </a>
-                                            <a href="#DeleteCat<?php echo $col['CategoryId']; ?>" data-toggle="modal">
-                                                <span class="glyphicon glyphicon-trash btn btn-primary btn-xs"
-                                                    data-toggle="tooltip" data-placement="right" title=""
-                                                    data-original-title="<?php echo $DeleteCategories; ?>"></span>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <div class="modal fade" id="DeleteCat<?php echo $col['CategoryId']; ?>" tabindex="-1"
-                                        role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <form action="" method="post">
-                                                    <div class="modal-header">
-                                                        <button type="button" class="close" data-dismiss="modal"
-                                                            aria-hidden="true">&times;</button>
-                                                        <h4 class="modal-title" id="myModalLabel"><?php echo $AreYouSure; ?>
-                                                        </h4>
+
+                                <!-- Edit Category Modal -->
+                                <div class="modal fade" id="EditCat<?php echo $col['CategoryId']; ?>" tabindex="-1"
+                                    role="dialog">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form action="" method="post">
+                                                <div class="modal-header">
+                                                    <button type="button" class="close"
+                                                        data-dismiss="modal">&times;</button>
+                                                    <h4 class="modal-title">Edit Expense Head</h4>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="form-group">
+                                                        <label for="categoryedit">Category Name</label>
+                                                        <input type="text" class="form-control" name="categoryedit"
+                                                            value="<?php echo $col['CategoryName']; ?>" required>
                                                     </div>
-                                                    <div class="modal-body">
-                                                        <?php echo $ThisItem; ?>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <input type="hidden" id="categoryid" name="categoryid"
-                                                            value="<?php echo $col['CategoryId']; ?>" />
-                                                        <button type="input" id="submit" name="submitin"
-                                                            class="btn btn-primary"><?php echo $Yes; ?></button>
-                                                        <button type="button" class="btn btn-default"
-                                                            data-dismiss="modal"><?php echo $Cancel; ?></button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <input type="hidden" name="categoryid"
+                                                        value="<?php echo $col['CategoryId']; ?>">
+                                                    <button type="submit" name="edit" class="btn btn-primary">Save</button>
+                                                    <button type="button" class="btn btn-default"
+                                                        data-dismiss="modal">Cancel</button>
+                                                </div>
+                                            </form>
                                         </div>
                                     </div>
-                                    <!-- /.modal -->
-                                    <!-- /.edit category -->
-                                    <div class="modal fade" id="EditCat<?php echo $col['CategoryId']; ?>" tabindex="-1"
-                                        role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <form action="" method="post">
-                                                    <div class="modal-header">
-                                                        <button type="button" class="close" data-dismiss="modal"
-                                                            aria-hidden="true">&times;</button>
-                                                        <h4 class="modal-title" id="myModalLabel">
-                                                            <?php echo $EditCategory; ?>
-                                                        </h4>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="form-group">
-                                                            <label for="category"><?php echo $Category; ?></label>
-                                                            <input class="form-control" required name="categoryedit"
-                                                                value="<?php echo $col['CategoryName']; ?>" type="text"
-                                                                autofocus>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <input type="hidden" id="categoryid" name="categoryid"
-                                                            value="<?php echo $col['CategoryId']; ?>" />
-                                                        <button type="input" id="submit" name="edit"
-                                                            class="btn btn-primary"><?php echo $Yes; ?></button>
-                                                        <button type="button" class="btn btn-default"
-                                                            data-dismiss="modal"><?php echo $Cancel; ?></button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php } ?>
-                            </tbody>
-                        </table>
-                    </div>
+                                </div>
+                            <?php } ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
 
-<!-- /.col-lg-4 -->
-</div>
-<!-- /.row -->
-
-</div>
-<!-- /#page-wrapper -->
-
-<!-- New Category Modal -->
-<div class="modal fade" id="new" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+<!-- New Expense Head Modal -->
+<div class="modal fade" id="new" tabindex="-1" role="dialog">
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="" method="post">
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    <h4 class="modal-title" id="myModalLabel">Add New Head</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Add New Expense Head</h4>
                 </div>
                 <div class="modal-body">
-
-
                     <div class="form-group">
-                        <label for="department"><?php echo $Department; ?></label>
+                        <label for="department_id">Select Department</label>
                         <select class="form-control" name="department_id" required>
-                            <option value="" disabled selected><?php echo $SelectDepartment; ?></option>
-                            <?php while ($row = mysqli_fetch_assoc($departmentResult)) { ?>
+                            <option value="" disabled selected>Select Department</option>
+                            <?php
+                            $departmentResult = mysqli_query($mysqli, $departmentQuery);
+                            while ($row = mysqli_fetch_assoc($departmentResult)) { ?>
                                 <option value="<?php echo $row['id']; ?>"><?php echo $row['name']; ?></option>
                             <?php } ?>
                         </select>
                     </div>
-                    <!-- Category Input Field -->
                     <div class="form-group">
-                        <label for="category">Head</label>
-                        <input class="form-control" required placeholder="Expense Head" name="category"
-                            type="text" autofocus>
+                        <label for="category">Expense Head</label>
+                        <input type="text" class="form-control" name="category" placeholder="Enter expense head"
+                            required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" name="submit" class="btn btn-success"><span
-                            class=""></span><?php echo $Save; ?></button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo $Cancel; ?></button>
+                    <button type="submit" name="submit" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 </div>
             </form>
         </div>
@@ -257,9 +238,6 @@ include('includes/global.php');
 
 <script>
     $(function () {
-        $('.notification').tooltip({
-            selector: "[data-toggle=tooltip]",
-            container: "body"
-        });
+        $('[data-toggle="tooltip"]').tooltip();
     });
 </script>

@@ -98,8 +98,8 @@ include('includes/global.php');
                                 <input type="text" name="search" placeholder="<?php echo $Search; ?>"
                                     class="form-control">
                                 <span class="input-group-btn">
-                                    <button class="btn btn-primary" name="searchbtn" type="submit"
-                                        ><i class="fa fa-search"></i></button>
+                                    <button class="btn btn-primary" name="searchbtn" type="submit"><i
+                                            class="fa fa-search"></i></button>
                                     <button class="btn btn-danger" type="button" onclick="clearSearch()">
                                         <i class="fa fa-times"></i>
                                     </button>
@@ -131,11 +131,11 @@ include('includes/global.php');
                                             <span class="btn btn-primary btn-xs glyphicon glyphicon-edit"
                                                 data-toggle="tooltip" data-placement="left" title="Edit Department"></span>
                                         </a>
-                                        <a href="#DeleteDept<?php echo $col['id']; ?>" data-toggle="modal">
+                                        <!-- <a href="#DeleteDept<?php echo $col['id']; ?>" data-toggle="modal">
                                             <span class="glyphicon glyphicon-trash btn btn-primary btn-xs"
                                                 data-toggle="tooltip" data-placement="right"
                                                 title="Delete Department"></span>
-                                        </a>
+                                        </a> -->
                                     </td>
                                 </tr>
 

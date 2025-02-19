@@ -334,7 +334,14 @@ if (isset($_POST['expense'])) {
         }
     }
 }
+$query = "SELECT CategoryId, CategoryName FROM category";
+$result = mysqli_query($mysqli, $query);
 
+if ($result) {
+    $categories = mysqli_fetch_all($result, MYSQLI_ASSOC);
+} else {
+    $categories = [];
+}
 ?>
 
 <!-- Page Content -->
@@ -453,13 +460,16 @@ if (isset($_POST['expense'])) {
                             </script>
 
 
-                            <!-- Category Dropdown (Head) -->
                             <div class="form-group col-lg-6">
                                 <label for="ecategory">Head</label>
                                 <select name="ecategory" id="ecategory" class="form-control">
                                     <option value="">-- Select Head --</option>
+                                    <?php foreach ($categories as $category) { ?>
+                                        <option value="<?php echo $category['CategoryId']; ?>">
+                                            <?php echo $category['CategoryName']; ?>
+                                        </option>
+                                    <?php } ?>
                                 </select>
-
                             </div>
                             <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
                             <script>
