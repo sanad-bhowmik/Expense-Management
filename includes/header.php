@@ -12,7 +12,7 @@ include('includes/notification.php');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
-
+    <link rel="icon" type="image/x-icon" href="https://media.istockphoto.com/id/1423550966/vector/profit-rounded-lines-icon.jpg?s=612x612&w=0&k=20&c=_KFEK2PUIlquKGVUYQ18I2rO6xQ3ieFDEx-xHpXRLTI=">
     <title>TWILLON</title>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -174,7 +174,7 @@ include('includes/notification.php');
                             <li>
                                 <a <?php ActiveClass("index.php?page=Ledger"); ?> href="index.php?page=Ledger">
                                     <i class="glyphicon glyphicon-zoom-in"></i>
-                                    Ledger
+                                    User Ledger
                                     <span class="fa arrow">
                                 </a>
                             </li>
@@ -188,6 +188,16 @@ include('includes/notification.php');
                             <li>
                                 <a <?php ActiveClass("index.php?page=Transaction"); ?> href="index.php?page=Transaction"><i
                                         class="glyphicon glyphicon-floppy-open"></i> Add Expenses<span class="fa arrow"></a>
+                            </li>
+                        <?php } ?>
+                        <?php
+                        // Only show the Role option if LastName is "admin"
+                        if ($ColUser['LastName'] == 'admin') {
+                            ?>
+                            <li>
+                                <a <?php ActiveClass("index.php?page=LedgerReport"); ?>
+                                    href="index.php?page=LedgerReport"><i class="glyphicon glyphicon-th"></i> Ledger
+                                    Report<span class="fa arrow"></a>
                             </li>
                         <?php } ?>
 

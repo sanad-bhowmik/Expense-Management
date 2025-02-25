@@ -5,9 +5,8 @@ include('includes/Functions.php');
 
 // Include Notifications
 include('includes/notification.php');
-
-// Fetch departments for the dropdown
-$departmentQuery = "SELECT id, name FROM department";
+// Get departments from the database
+$departmentQuery = "SELECT id, name FROM department"; // Assuming the table is named 'departments' and it has 'id' and 'name' columns
 $departmentResult = mysqli_query($mysqli, $departmentQuery);
 
 // Fetch all categories for the dropdown
@@ -48,6 +47,29 @@ $GetListCategory = mysqli_query($mysqli, $GetList);
 
 // Include Global page
 include('includes/global.php');
+// Handle New Category Submission
+if (isset($_POST['submit'])) {
+    session_start(); // Start session if not already started
+    $categoryName = $_POST['category'];
+    $departmentId = $_POST['department_id'];
+    $userId = $_SESSION['UserId']; // Get UserId from session
+    $level = 2; // Set Level to 2
+
+    $sql = "INSERT INTO category (CategoryName, department_id, UserId, Level) VALUES (?, ?, ?, ?)";
+    if ($statement = $mysqli->prepare($sql)) {
+        $statement->bind_param('siii', $categoryName, $departmentId, $userId, $level);
+        if ($statement->execute()) {
+            echo "<script>
+                // alert('Category added successfully!');
+                window.location.href = 'http://localhost/money/index.php?page=ManageExpenseCategory';
+            </script>";
+        } else {
+            echo "<script>alert('Error adding category!');</script>";
+        }
+        $statement->close();
+    }
+}
+
 
 // Handle category edit update
 if (isset($_POST['edit'])) {
@@ -60,7 +82,7 @@ if (isset($_POST['edit'])) {
         if ($statement->execute()) {
             $msgBox = "<div class='alert alert-success'>Head updated successfully.</div>";
             echo "<script type='text/javascript'>
-                    window.location.href = 'http://36.50.40.147:9099/Twillon/index.php?page=ManageExpenseCategory';
+                    window.location.href = 'http://localhost/money/index.php?page=ManageExpenseCategory';
                   </script>";
         } else {
             $msgBox = "<div class='alert alert-danger'>Error updating category.</div>";
@@ -200,7 +222,6 @@ if (isset($_POST['edit'])) {
     </div>
 </div>
 
-<!-- New Expense Head Modal -->
 <div class="modal fade" id="new" tabindex="-1" role="dialog">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -235,7 +256,6 @@ if (isset($_POST['edit'])) {
         </div>
     </div>
 </div>
-
 <script>
     $(function () {
         $('[data-toggle="tooltip"]').tooltip();

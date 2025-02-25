@@ -19,122 +19,6 @@ include('includes/Functions.php');
 //Include Notifications
 include('includes/notification.php');
 
-
-//save income form
-if (isset($_POST['income'])) {
-    $iuser = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
-    $iname = "Hardcoded Name"; // Hardcoding the name
-    $icategory = $mysqli->real_escape_string($_POST["icategory"]);
-    $department_id = isset($_POST["edepartment"]) ? intval($_POST["edepartment"]) : 0;
-    $idescription = $mysqli->real_escape_string($_POST["edescription"]);
-    $idate = $mysqli->real_escape_string($_POST["edate"]);
-    $iamount = $mysqli->real_escape_string(clean($_POST["eamount"]));
-
-    // Validate the data
-    if ($iuser == '' || $iamount == '' || $department_id == 0) {
-        $msgBox = alertBox("User, amount, and department are required.");
-    } else {
-        if ($iamount < 0) {
-            $msgBox = alertBox("Amount cannot be negative.");
-        } else {
-            // Handle file upload for income
-            $filePath = null; // Initialize file path to null
-
-            if (isset($_FILES['ifile'])) {
-                // var_dump($_FILES['ifile']);  // This will dump the file array for debugging
-
-                if ($_FILES['ifile']['error'] == 0) {
-                    $fileTmpPath = $_FILES['ifile']['tmp_name'];
-                    $fileName = $_FILES['ifile']['name'];
-                    $fileSize = $_FILES['ifile']['size'];
-                    $fileType = $_FILES['ifile']['type'];
-
-                    // Define the upload directory
-                    $uploadDir = 'C:/xampp/htdocs/Money/file/income/'; // Define the upload directory
-
-                    // Ensure the directory exists and is writable
-                    if (!is_dir($uploadDir)) {
-                        if (!mkdir($uploadDir, 0777, true)) {
-                            $msgBox = alertBox("Failed to create upload directory.");
-                            exit;
-                        }
-                    }
-
-                    // Generate a unique file name to prevent overwriting
-                    $newFileName = time() . '_' . basename($fileName);
-                    $destination = $uploadDir . $newFileName;
-
-                    // Move the uploaded file to the destination directory
-                    if (move_uploaded_file($fileTmpPath, $destination)) {
-                        $filePath = $destination; // Save the file path to insert into the database
-                        // $msgBox = alertBox("File uploaded successfully.");
-                    } else {
-                        // $msgBox = alertBox("Error uploading the file.");
-                    }
-                } else {
-                    $msgBox = alertBox("File upload error. Error code: " . $_FILES['ifile']['error']);
-                    // var_dump($_FILES['ifile']);  // Output error details for debugging
-                }
-            } else {
-                $msgBox = alertBox("No file uploaded.");
-                // var_dump($_FILES);  // Dump the entire $_FILES array for debugging
-            }
-
-            // Insert the income into the assets table, including file path
-            $sql = "INSERT INTO assets (UserId, Title, Date, CategoryId, department_id, Amount, Description, AccountId, file_path) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-            if ($statement = $mysqli->prepare($sql)) {
-                $accountId = 1;  // Assuming AccountId is 1 for income
-
-                // Bind the parameters to the prepared statement
-                $statement->bind_param('issiiisss', $iuser, $iname, $idate, $icategory, $department_id, $iamount, $idescription, $accountId, $filePath);
-
-                if ($statement->execute()) {
-                    $msgBox .= alertBox("Income saved successfully.");
-
-                    // Now, handle the ledger entry for the income
-                    $checkLedgerSql = "SELECT total FROM ledger WHERE user_id = ? AND category_id = ? AND level = 2 ORDER BY created_at DESC LIMIT 1";
-                    if ($checkLedgerStmt = $mysqli->prepare($checkLedgerSql)) {
-                        $checkLedgerStmt->bind_param('ii', $iuser, $icategory);
-                        $checkLedgerStmt->execute();
-                        $checkLedgerStmt->store_result();
-                        $checkLedgerStmt->bind_result($existing_total);
-                        $checkLedgerStmt->fetch();
-
-                        if ($checkLedgerStmt->num_rows > 0) {
-                            $new_total = $existing_total + $iamount;
-                        } else {
-                            $new_total = $iamount;
-                        }
-
-                        $ledgerSql = "INSERT INTO ledger (user_id, type, category_id, amount, total, InBalance, created_at, updated_at, level) 
-                                      VALUES (?, 'in', ?, ?, ?, ?, NOW(), NOW(), 2)";
-
-                        if ($insertLedgerStmt = $mysqli->prepare($ledgerSql)) {
-                            $insertLedgerStmt->bind_param('iiidd', $iuser, $icategory, $iamount, $new_total, $iamount);
-
-                            if ($insertLedgerStmt->execute()) {
-                                // $msgBox .= alertBox("Ledger entry inserted successfully.");
-                            } else {
-                                $msgBox .= alertBox("Error inserting into ledger: " . $insertLedgerStmt->error);
-                            }
-                        } else {
-                            $msgBox .= alertBox("Error preparing insertLedgerSql: " . $mysqli->error);
-                        }
-                    } else {
-                        $msgBox .= alertBox("Error preparing checkLedgerSql: " . $mysqli->error);
-                    }
-                } else {
-                    $msgBox = alertBox("Error executing query to insert income: " . $statement->error);
-                }
-            } else {
-                $msgBox = alertBox("Error preparing the query: " . $mysqli->error);
-            }
-        }
-    }
-}
-
 // Check if the user is logged in by checking session variables
 if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
     // User is logged in
@@ -176,9 +60,10 @@ if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
 }
 // Save Expense Form
 if (isset($_POST['expense'])) {
-    $euser = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+    // Get the user ID from the session
+    $euser = isset($_SESSION['UserId']) ? $_SESSION['UserId'] : 0; // Fetch the UserId from session
+
     $ename = "Hardcoded Name"; // Hardcoding the name
-    $department_id = $mysqli->real_escape_string($_POST["edepartment"]);
     $ecategory = $mysqli->real_escape_string($_POST["ecategory"]);
     $edescription = isset($_POST["edescription"]) ? $mysqli->real_escape_string($_POST["edescription"]) : ""; // Optional description
     $edate = $mysqli->real_escape_string($_POST["edate"]);
@@ -224,12 +109,34 @@ if (isset($_POST['expense'])) {
     if ($eamount == '') {
         $msgBox .= alertBox("Amount is required.");
     }
+
+    // Get the department_id of the logged-in user from the department_user table
+    $department_id = 0; // Default value
+    if ($euser != 0) {
+        $departmentQuery = "SELECT department_id FROM department_user WHERE UserId = ?";
+        if ($stmt = $mysqli->prepare($departmentQuery)) {
+            $stmt->bind_param('i', $euser);
+            $stmt->execute();
+            $stmt->store_result();
+            $stmt->bind_result($department_id);
+            $stmt->fetch();
+            $stmt->close();
+        } else {
+            $msgBox .= alertBox("Error fetching department_id: " . $mysqli->error);
+        }
+    }
+
+    // If no department_id found or eamount is empty, display an error message
     if ($department_id == 0) {
         $msgBox .= alertBox("Department is required.");
     }
 
+    if ($eamount == '') {
+        $msgBox .= alertBox("Amount is required.");
+    }
+
     if ($msgBox == '') {
-        // Insert the expense into the bills table, including the file_path
+        // Insert the expense into the bills table, including the department_id
         $sql = "INSERT INTO bills (UserId, department_id, Title, Dates, CategoryId, AccountId, Amount, Description, file_path) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -334,6 +241,7 @@ if (isset($_POST['expense'])) {
         }
     }
 }
+
 $query = "SELECT CategoryId, CategoryName FROM category";
 $result = mysqli_query($mysqli, $query);
 
@@ -342,6 +250,37 @@ if ($result) {
 } else {
     $categories = [];
 }
+$loggedInUserId = $_SESSION['UserId']; // Assuming you have UserId in the session
+
+// Fetch department_id from department_user table based on logged-in UserId
+$query = "SELECT department_id FROM department_user WHERE UserId = ?";
+$stmt = $mysqli->prepare($query);
+$stmt->bind_param('i', $loggedInUserId);
+$stmt->execute();
+$result = $stmt->get_result();
+$departmentRow = $result->fetch_assoc();
+$departmentId = $departmentRow['department_id']; // Get the department_id for the logged-in user
+$stmt->close();
+
+// Fetch categories based on the department_id of the logged-in user
+$query = "SELECT CategoryId, CategoryName FROM category WHERE department_id = ? AND Level = 2";
+$stmt = $mysqli->prepare($query);
+$stmt->bind_param('i', $departmentId);
+$stmt->execute();
+$categoryResult = $stmt->get_result();
+$stmt->close();
+$userId = $_SESSION['UserId'];
+
+// Fetch the current balance for the logged-in user from the 'user_balance' table
+$getBalanceQuery = "SELECT balance FROM user_balance WHERE user_id = '$userId' LIMIT 1";
+$result = mysqli_query($mysqli, $getBalanceQuery);
+
+// Check if the balance exists
+$currentBalance = 0;
+if ($result && mysqli_num_rows($result) > 0) {
+    $row = mysqli_fetch_assoc($result);
+    $currentBalance = $row['balance'];
+}
 ?>
 
 <!-- Page Content -->
@@ -349,6 +288,7 @@ if ($result) {
     <div class="row">
         <div class="col-lg-12">
             <h1 class="page-header">Add Expense</h1>
+
         </div>
     </div>
     <div class="row">
@@ -360,6 +300,8 @@ if ($result) {
             <div class="panel panel-danger">
                 <div class="panel-heading">
                     <i class="fa fa-minus"></i> <?php echo $Expenses; ?>
+                    <span class="pull-right">Current Balance:<strong>
+                        <?php echo number_format($currentBalance, 2); ?> Tk</span></strong>
                 </div>
                 <div class="panel-body">
                     <form action="" method="post" role="form" enctype="multipart/form-data">
@@ -464,11 +406,16 @@ if ($result) {
                                 <label for="ecategory">Head</label>
                                 <select name="ecategory" id="ecategory" class="form-control">
                                     <option value="">-- Select Head --</option>
-                                    <?php foreach ($categories as $category) { ?>
-                                        <option value="<?php echo $category['CategoryId']; ?>">
-                                            <?php echo $category['CategoryName']; ?>
-                                        </option>
-                                    <?php } ?>
+                                    <?php
+                                    // Check if any categories are returned and populate the dropdown
+                                    if ($categoryResult->num_rows > 0) {
+                                        while ($row = $categoryResult->fetch_assoc()) {
+                                            echo "<option value='" . $row['CategoryId'] . "'>" . $row['CategoryName'] . "</option>";
+                                        }
+                                    } else {
+                                        echo "<option value=''>No categories available for your department</option>";
+                                    }
+                                    ?>
                                 </select>
                             </div>
                             <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -526,8 +473,6 @@ if ($result) {
                 </div>
             </div>
         </div>
-
-
 
     </div>
 </div>

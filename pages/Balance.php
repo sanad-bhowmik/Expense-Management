@@ -92,20 +92,34 @@ if (isset($_POST['submit'])) {
                 $stmt->bind_param('dsi', $new_balance, $date, $user_id);
 
                 if ($stmt->execute()) {
-                    // Insert the entered balance (not the total sum) into the history table
-                    $historyInsertQuery = "INSERT INTO user_balance_history (user_id, balance, add_by, status, date, created_at, updated_at)
-                                            VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
-                    if ($historyStmt = $mysqli->prepare($historyInsertQuery)) {
-                        $historyStmt->bind_param('idiss', $user_id, $balance, $add_by, $status, $date);
+                    // Insert into ledger table
+                    $ledgerInsertQuery = "INSERT INTO ledger (user_id, InBalance, type, amount, total, created_at, updated_at)
+                                          VALUES (?, ?, 'in', ?, ?, NOW(), NOW())";
+                    if ($ledgerStmt = $mysqli->prepare($ledgerInsertQuery)) {
+                        $ledgerStmt->bind_param('iddd', $user_id, $balance, $balance, $new_balance);
 
-                        if ($historyStmt->execute()) {
-                            $msgBox = alertBox("Balance has been updated successfully!");
+                        if ($ledgerStmt->execute()) {
+                            // Insert the entered balance (not the total sum) into the history table
+                            $historyInsertQuery = "INSERT INTO user_balance_history (user_id, balance, add_by, status, date, created_at, updated_at)
+                                                  VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
+                            if ($historyStmt = $mysqli->prepare($historyInsertQuery)) {
+                                $historyStmt->bind_param('idiss', $user_id, $balance, $add_by, $status, $date);
+
+                                if ($historyStmt->execute()) {
+                                    $msgBox = alertBox("Balance has been updated successfully!");
+                                } else {
+                                    $msgBox = alertBox("Error: Unable to insert into user_balance_history. " . $historyStmt->error, "error");
+                                }
+                                $historyStmt->close();
+                            } else {
+                                $msgBox = alertBox("Error: Unable to prepare user_balance_history insert query. " . $mysqli->error, "error");
+                            }
                         } else {
-                            $msgBox = alertBox("Error: Unable to insert into user_balance_history. " . $historyStmt->error, "error");
+                            $msgBox = alertBox("Error: Unable to insert into ledger. " . $ledgerStmt->error, "error");
                         }
-                        $historyStmt->close();
+                        $ledgerStmt->close();
                     } else {
-                        $msgBox = alertBox("Error: Unable to prepare user_balance_history insert query. " . $mysqli->error, "error");
+                        $msgBox = alertBox("Error: Unable to prepare ledger insert query. " . $mysqli->error, "error");
                     }
                 } else {
                     $msgBox = alertBox("Error: Unable to update balance. " . $stmt->error, "error");
@@ -122,20 +136,34 @@ if (isset($_POST['submit'])) {
                 $stmt->bind_param('diss', $balance, $user_id, $date, $status);
 
                 if ($stmt->execute()) {
-                    // Insert the entered balance (not the total sum) into the history table
-                    $historyInsertQuery = "INSERT INTO user_balance_history (user_id, balance, add_by, status, date, created_at, updated_at)
-                                            VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
-                    if ($historyStmt = $mysqli->prepare($historyInsertQuery)) {
-                        $historyStmt->bind_param('idiss', $user_id, $balance, $add_by, $status, $date);
+                    // Insert into ledger table
+                    $ledgerInsertQuery = "INSERT INTO ledger (user_id, InBalance, type, amount, total, created_at, updated_at)
+                                          VALUES (?, ?, 'credit', ?, ?, NOW(), NOW())";
+                    if ($ledgerStmt = $mysqli->prepare($ledgerInsertQuery)) {
+                        $ledgerStmt->bind_param('iddd', $user_id, $balance, $balance, $balance);
 
-                        if ($historyStmt->execute()) {
-                            $msgBox = alertBox("Balance has been added successfully!");
+                        if ($ledgerStmt->execute()) {
+                            // Insert the entered balance (not the total sum) into the history table
+                            $historyInsertQuery = "INSERT INTO user_balance_history (user_id, balance, add_by, status, date, created_at, updated_at)
+                                                  VALUES (?, ?, ?, ?, ?, NOW(), NOW())";
+                            if ($historyStmt = $mysqli->prepare($historyInsertQuery)) {
+                                $historyStmt->bind_param('idiss', $user_id, $balance, $add_by, $status, $date);
+
+                                if ($historyStmt->execute()) {
+                                    $msgBox = alertBox("Balance has been added successfully!");
+                                } else {
+                                    $msgBox = alertBox("Error: Unable to insert into user_balance_history. " . $historyStmt->error, "error");
+                                }
+                                $historyStmt->close();
+                            } else {
+                                $msgBox = alertBox("Error: Unable to prepare user_balance_history insert query. " . $mysqli->error, "error");
+                            }
                         } else {
-                            $msgBox = alertBox("Error: Unable to insert into user_balance_history. " . $historyStmt->error, "error");
+                            $msgBox = alertBox("Error: Unable to insert into ledger. " . $ledgerStmt->error, "error");
                         }
-                        $historyStmt->close();
+                        $ledgerStmt->close();
                     } else {
-                        $msgBox = alertBox("Error: Unable to prepare user_balance_history insert query. " . $mysqli->error, "error");
+                        $msgBox = alertBox("Error: Unable to prepare ledger insert query. " . $mysqli->error, "error");
                     }
                 } else {
                     $msgBox = alertBox("Error: Unable to add balance. " . $stmt->error, "error");
@@ -149,7 +177,6 @@ if (isset($_POST['submit'])) {
         $msgBox = alertBox("Error: Unable to check existing balance. " . $mysqli->error, "error");
     }
 }
-
 
 // Get list of departments for the department dropdown
 $GetDepartments = "SELECT id, name FROM department ORDER BY name ASC";
@@ -333,8 +360,10 @@ include('includes/global.php');
                     </div>
                     <div class="form-group">
                         <label for="date">Date</label>
-                        <input type="date" name="date" id="date" class="form-control">
+                        <input type="date" name="date" id="date" class="form-control"
+                            value="<?php echo date('Y-m-d'); ?>">
                     </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

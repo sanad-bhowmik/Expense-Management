@@ -75,7 +75,8 @@ $GetList = "
     ORDER BY c.CategoryName ASC
 ";
 $GetListCategory = mysqli_query($mysqli, $GetList);
-
+$departmentQuery = "SELECT id, name FROM department";
+$departmentResult = mysqli_query($mysqli, $departmentQuery);
 ?>
 
 <div id="page-wrapper">
@@ -190,10 +191,12 @@ $GetListCategory = mysqli_query($mysqli, $GetList);
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="department"><?php echo $Department; ?></label>
+                        <label for="department_id">Select Department</label>
                         <select class="form-control" name="department_id" required>
-                            <option value="" disabled selected><?php echo $SelectDepartment; ?></option>
-                            <?php while ($row = mysqli_fetch_assoc($departmentResult)) { ?>
+                            <option value="" disabled selected>Select Department</option>
+                            <?php
+                            $departmentResult = mysqli_query($mysqli, $departmentQuery);
+                            while ($row = mysqli_fetch_assoc($departmentResult)) { ?>
                                 <option value="<?php echo $row['id']; ?>"><?php echo $row['name']; ?></option>
                             <?php } ?>
                         </select>

@@ -80,6 +80,8 @@ if (isset($_GET['page']) && $_GET['page'] == 'Transaction') {
 
 } else if (isset($_GET['page']) && $_GET['page'] == 'Ledger') {
     $page = "Ledger";
+} else if (isset($_GET['page']) && $_GET['page'] == 'LedgerReport') {
+    $page = "LedgerReport";
 } else {
     $page = 'dashboard';
 }

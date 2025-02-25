@@ -195,6 +195,7 @@ if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
                 <div class="panel panel-primary">
                     <div class="panel-heading">
                         <i class="fa fa-plus"></i> <?php echo $Incomes; ?>
+
                     </div>
                     <div class="panel-body">
                         <form role="form" method="post" action="" enctype="multipart/form-data">
@@ -209,31 +210,25 @@ if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
                                     </div>
                                 </div>
 
-
-                                <!-- Department Dropdown (Replacing Account Dropdown) -->
+                                <!-- Department Dropdown -->
                                 <?php if ($isFromDepartmentUser): ?>
-                                    <!-- If the user is from the department_user table, hide the department dropdown completely -->
                                     <input type="hidden" name="edepartment" value="<?php echo $loggedInUserDepartmentId; ?>">
-                                    <!-- Set the department ID from auth -->
                                     <div class="form-group col-lg-6" style="display: none;">
                                         <label for="edepartment"><?php echo $Department; ?></label>
                                         <input type="text" class="form-control" value="<?php echo $loggedInUserDepartmentId; ?>"
                                             disabled>
                                     </div>
                                 <?php else: ?>
-                                    <!-- If the user is from the user table, show the department dropdown -->
                                     <div class="form-group col-lg-6">
                                         <label for="edepartment"><?php echo $Department; ?></label>
-                                        <select name="edepartment" class="form-control" required>
+                                        <select name="edepartment" id="edepartment" class="form-control" required>
                                             <option value="">-- Select Department --</option>
                                             <?php
-                                            // Fetch departments from the department table
                                             $query = "SELECT id, name FROM department";
                                             $result = mysqli_query($connection, $query);
 
                                             if ($result) {
                                                 while ($row = mysqli_fetch_assoc($result)) {
-                                                    // Check if the department matches the logged-in user's department and set it as selected
                                                     $selected = ($row['id'] == $loggedInUserDepartmentId) ? "selected" : "";
                                                     echo "<option value='" . $row['id'] . "' $selected>" . $row['name'] . "</option>";
                                                 }
@@ -245,48 +240,19 @@ if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
                                     </div>
                                 <?php endif; ?>
 
-
                                 <!-- User Dropdown -->
-                                <?php if ($isFromDepartmentUser): ?>
-                                    <!-- If the user is from the department_user table, hide the dropdown completely using display: none -->
-                                    <input type="hidden" name="user_id" value="<?php echo $loggedInUserId; ?>">
-                                    <div class="form-group col-lg-6" style="display: none;">
-                                        <label for="user_id">User</label>
-                                        <input type="text" class="form-control" value="<?php echo $loggedInUserFirstName; ?>"
-                                            disabled>
-                                    </div>
-                                <?php else: ?>
-                                    <!-- If the user is from the user table, show the dropdown -->
-                                    <div class="form-group col-lg-6">
-                                        <label for="user_id">User</label>
-                                        <select name="user_id" class="form-control" required>
-                                            <option value="">-- Select User --</option>
-                                            <?php
-                                            // Fetch users from department_user table
-                                            $query = "SELECT UserId, FirstName FROM department_user";
-                                            $result = mysqli_query($connection, $query);
-
-                                            if ($result) {
-                                                while ($row = mysqli_fetch_assoc($result)) {
-                                                    echo "<option value='" . $row['UserId'] . "'>" . $row['FirstName'] . "</option>";
-                                                }
-                                            } else {
-                                                echo "<option value=''>No users found</option>";
-                                            }
-                                            ?>
-                                        </select>
-                                    </div>
-                                <?php endif; ?>
+                                <div class="form-group col-lg-6" style="display: none;">
+                                    <label for="user_id">User</label>
+                                    <select name="user_id" id="user_id" class="form-control">
+                                        <option value="">-- Select User --</option>
+                                    </select>
+                                </div>
 
                                 <!-- Category Dropdown (Head) -->
                                 <div class="form-group col-lg-6">
                                     <label for="icategory">Head</label>
-                                    <select name="icategory" class="form-control">
-                                        <?php while ($col = mysqli_fetch_assoc($income)) { ?>
-                                            <option value="<?php echo $col['CategoryId']; ?>">
-                                                <?php echo $col['CategoryName']; ?>
-                                            </option>
-                                        <?php } ?>
+                                    <select name="icategory" id="icategory" class="form-control">
+                                        <option value="">-- Select Head --</option>
                                     </select>
                                 </div>
 
@@ -299,26 +265,27 @@ if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
                                             id="iamount" name="eamount" type="text" value="">
                                     </div>
                                 </div>
+
+                                <!-- Attach File -->
                                 <div class="form-group col-lg-6">
                                     <label for="ifile">Attach File</label>
                                     <input type="file" name="ifile" id="ifile" class="form-control">
                                 </div>
 
-
-
-                                <!-- Description Field -->
-                                <div class="form-group col-lg-12 clearbothh">
+                                <!-- Description (Aligned with Attach File) -->
+                                <div class="form-group col-lg-6">
                                     <label for="edescription"><?php echo $Description; ?></label>
-                                    <textarea name="edescription" class="form-control"></textarea>
+                                    <textarea name="edescription" class="form-control" rows="3"></textarea>
                                 </div>
+
                             </fieldset>
-
-
-                    </div>
-                    <div class="panel-footer">
-                        <button type="submit" name="income" class="btn btn-success btn-block"><span
-                                class="glyphicon glyphicon-log-in"></span> <?php echo $SaveIncome; ?></button>
+                            <div class="panel-footer">
+                                <button type="submit" name="income" class="btn btn-success btn-block"><span
+                                        class="glyphicon glyphicon-log-in"></span> <?php echo $SaveIncome; ?></button>
+                            </div>
                         </form>
+
+
                     </div>
                 </div>
             <?php } ?>
@@ -326,6 +293,45 @@ if (isset($_SESSION['UserId']) && isset($_SESSION['FirstName'])) {
     </div>
 </div>
 </div>
+
+<!-- jQuery and Ajax to make cascading dropdowns work -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        // When the department dropdown changes, fetch the users for the selected department
+        $('#edepartment').change(function () {
+            var departmentId = $(this).val();
+
+            if (departmentId != '') {
+                // Make an AJAX call to get users for the selected department
+                $.ajax({
+                    url: 'pages/fetch_users.php', // PHP file to fetch users based on department
+                    type: 'POST',
+                    data: { department_id: departmentId },
+                    success: function (response) {
+                        // Populate the user dropdown with the response (list of users)
+                        $('#user_id').html(response);
+                    }
+                });
+
+                // Make an AJAX call to get categories for the selected department (Head dropdown)
+                $.ajax({
+                    url: 'pages/fetch_income_categories.php ', // PHP file to fetch categories based on department
+                    type: 'POST',
+                    data: { department_id: departmentId },
+                    success: function (response) {
+                        // Populate the category dropdown with the response (list of categories)
+                        $('#icategory').html(response);
+                    }
+                });
+            } else {
+                // Clear the user and category dropdowns if no department is selected
+                $('#user_id').html('<option value="">-- Select User --</option>');
+                $('#icategory').html('<option value="">-- Select Head --</option>');
+            }
+        });
+    });
+</script>
 <script>
     $(document).on('keyup', '#iamount', function () {
         var x = $(this).val();

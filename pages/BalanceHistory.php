@@ -1,21 +1,24 @@
 <?php
-
 // Include Functions
 include('includes/Functions.php');
 
 // Include Notifications
 include('includes/notification.php');
 
-// Default query condition
-$searchQuery = " WHERE 1=1 "; // We start with a condition that will always be true
+// Default query condition: Show only current date's data by default
+$currentDate = date('Y-m-d'); // Get the current date
+$searchQuery = " WHERE ubh.date = '$currentDate' "; // Default filter for current date
 
 // Process the filters when the form is submitted
 if (isset($_POST['searchbtn'])) {
 
-    // Filter by User Name (partial matching)
+    // Reset the default query condition if filters are applied
+    $searchQuery = " WHERE 1=1 "; // Reset to a condition that will always be true
+
+    // Filter by User Name (using dropdown)
     if (!empty($_POST['user_name'])) {
         $userName = $mysqli->real_escape_string($_POST['user_name']);
-        $searchQuery .= " AND (du.FirstName LIKE '%$userName%' OR du.LastName LIKE '%$userName%') ";
+        $searchQuery .= " AND ubh.user_id = '$userName' ";
     }
 
     // Filter by From Date and To Date
@@ -32,19 +35,22 @@ if (isset($_POST['searchbtn'])) {
     }
 }
 
-// Get Balance History with the filters applied
+// Get Balance History with the filters applied and include department name
 $GetBalanceHistory = "
     SELECT ubh.id, ubh.user_id, ubh.balance, ubh.add_by, ubh.status, ubh.date,
            u.FirstName AS add_by_first_name, u.LastName AS add_by_last_name,
-           du.FirstName AS user_first_name, du.LastName AS user_last_name
+           du.FirstName AS user_first_name, du.LastName AS user_last_name,
+           d.name AS department_name
     FROM user_balance_history ubh
     LEFT JOIN user u ON ubh.add_by = u.UserId
     LEFT JOIN department_user du ON ubh.user_id = du.UserId
+    LEFT JOIN department d ON du.department_id = d.id
     $searchQuery
-    ORDER BY ubh.date DESC
+    ORDER BY du.created_at DESC  -- Order by 'created_at' in descending order
 ";
 
 $BalanceHistory = mysqli_query($mysqli, $GetBalanceHistory);
+
 
 // Include Global page
 include('includes/global.php');
@@ -70,26 +76,34 @@ include('includes/global.php');
             <div class="panel-body">
                 <div class="d-flex justify-content-end mb-3" style="display: flex;margin-bottom: 5vh;gap:10px;">
                     <form action="" method="post" style="display: flex;gap: 10px;">
-                        <!-- User Name Filter -->
+                        <!-- User Name Filter (Dropdown) -->
                         <div class="mr-2">
-                            <label for="filterName" class="form-label">Search by Name</label>
-                            <input type="text" id="filterName" name="user_name" class="form-control"
-                                placeholder="Search by Name"
-                                value="<?php echo isset($_POST['user_name']) ? $_POST['user_name'] : ''; ?>" />
+                            <label for="user_name" class="form-label">Search by Name</label>
+                            <select name="user_name" id="user_name" class="form-control">
+                                <option value="">Select User</option>
+                                <?php
+                                // Get list of users for the dropdown
+                                $getUsers = "SELECT UserId, FirstName, LastName FROM department_user";
+                                $usersResult = mysqli_query($mysqli, $getUsers);
+                                while ($user = mysqli_fetch_assoc($usersResult)) {
+                                    echo "<option value='{$user['UserId']}'" . (isset($_POST['user_name']) && $_POST['user_name'] == $user['UserId'] ? ' selected' : '') . ">{$user['FirstName']}</option>";
+                                }
+                                ?>
+                            </select>
                         </div>
 
-                        <!-- From Date Filter -->
+                        <!-- From Date Filter (Default to today's date) -->
                         <div class="mr-2">
                             <label for="fromDate" class="form-label">From Date</label>
                             <input type="date" id="fromDate" name="fromDate" class="form-control"
-                                value="<?php echo isset($_POST['fromDate']) ? $_POST['fromDate'] : ''; ?>" />
+                                value="<?php echo isset($_POST['fromDate']) ? $_POST['fromDate'] : date('Y-m-d'); ?>" />
                         </div>
 
-                        <!-- To Date Filter -->
+                        <!-- To Date Filter (Default to today's date) -->
                         <div class="mr-2">
                             <label for="toDate" class="form-label">To Date</label>
                             <input type="date" id="toDate" name="toDate" class="form-control"
-                                value="<?php echo isset($_POST['toDate']) ? $_POST['toDate'] : ''; ?>" />
+                                value="<?php echo isset($_POST['toDate']) ? $_POST['toDate'] : date('Y-m-d'); ?>" />
                         </div>
 
                         <div style="margin-top: 26px;">
@@ -108,8 +122,9 @@ include('includes/global.php');
                 <table class="table table-bordered table-hover table-striped" id="assetsdata">
                     <thead>
                         <tr>
-                            <th class="text-left"><?php echo "Si"; ?></th>
+                            <th class="text-left"><?php echo "SL"; ?></th>
                             <th class="text-left"><?php echo "User Name"; ?></th>
+                            <th class="text-left"><?php echo "Department"; ?></th>
                             <th class="text-left"><?php echo "Added By"; ?></th>
                             <th class="text-left"><?php echo "Amount"; ?></th>
                             <th class="text-left"><?php echo "Date"; ?></th>
@@ -122,7 +137,8 @@ include('includes/global.php');
                         while ($col = mysqli_fetch_assoc($BalanceHistory)) { ?>
                             <tr>
                                 <td><?php echo $index++; ?></td>
-                                <td><?php echo $col['user_first_name'] . ' ' . $col['user_last_name']; ?></td>
+                                <td><?php echo $col['user_first_name']; // Only display First Name ?></td>
+                                <td><?php echo $col['department_name']; // Display Department Name ?></td>
                                 <td><?php echo $col['add_by_first_name']; ?></td>
                                 <td><?php echo number_format($col['balance'], 2); ?></td>
                                 <td><?php echo date("M d, Y", strtotime($col['date'])); ?></td>
@@ -138,11 +154,9 @@ include('includes/global.php');
 <script>
     function clearFilters() {
         // Clear all filter inputs
-        document.querySelector('input[name="user_name"]').value = '';
+        document.querySelector('select[name="user_name"]').value = '';
         document.querySelector('input[name="fromDate"]').value = '';
         document.querySelector('input[name="toDate"]').value = '';
         document.querySelector('form').submit(); // Resubmit the form to clear the search
     }
 </script>
-
-<!-- /#page-wrapper -->
